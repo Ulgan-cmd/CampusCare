@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
+import srmLogo from '@/assets/srm-logo.png';
 
 export const Header = () => {
   const { user, role, signOut } = useAuth();
@@ -35,10 +36,7 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to={role === 'maintenance' ? '/maintenance/incoming' : '/dashboard'} className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-              CI
-            </div>
-            <span className="font-semibold text-lg hidden sm:block">Campus Issues</span>
+            <span className="font-bold text-xl text-primary">Campus Fix</span>
           </Link>
         </div>
 
@@ -56,6 +54,9 @@ export const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
+          {/* SRM Logo */}
+          <img src={srmLogo} alt="SRM Logo" className="h-10 w-auto hidden sm:block" />
+          
           {user && (
             <>
               <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
@@ -88,6 +89,10 @@ export const Header = () => {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container py-4 space-y-2">
+            {/* Mobile SRM Logo */}
+            <div className="flex justify-center pb-4">
+              <img src={srmLogo} alt="SRM Logo" className="h-12 w-auto" />
+            </div>
             {navLinks.map((link) => (
               <Link
                 key={link.href}

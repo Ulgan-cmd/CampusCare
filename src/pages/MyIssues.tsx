@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,6 +90,45 @@ const MyIssues = () => {
     };
 
     fetchIssues();
+
+    // Subscribe to realtime updates for this user's issues
+    const channel = supabase
+      .channel('my-issues-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'issues',
+          filter: `student_id=eq.${user?.id}`,
+        },
+        (payload) => {
+          console.log('Issue updated:', payload);
+          setIssues((currentIssues) =>
+            currentIssues.map((issue) =>
+              issue.id === payload.new.id ? { ...issue, ...payload.new as Issue } : issue
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'issues',
+          filter: `student_id=eq.${user?.id}`,
+        },
+        (payload) => {
+          console.log('New issue:', payload);
+          setIssues((currentIssues) => [payload.new as Issue, ...currentIssues]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const filteredIssues = filter === 'all' 
@@ -205,11 +244,6 @@ const MyIssues = () => {
                               {statusConfig[issue.status].icon}
                               <span className="ml-1">{statusConfig[issue.status].label}</span>
                             </span>
-                            {issue.confidence && (
-                              <span className="text-xs text-muted-foreground">
-                                {issue.confidence}% AI confidence
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -238,7 +272,9 @@ const MyIssues = () => {
                       <div className="mt-4">
                         <div className="flex items-center gap-2">
                           <div className={`h-2 flex-1 rounded-full ${
-                            issue.status === 'submitted' ? 'bg-primary' : 'bg-primary'
+                            issue.status === 'submitted' || issue.status === 'in_progress' || issue.status === 'resolved' 
+                              ? 'bg-primary' 
+                              : 'bg-muted'
                           }`} />
                           <ArrowRight className="h-4 w-4 text-muted-foreground" />
                           <div className={`h-2 flex-1 rounded-full ${

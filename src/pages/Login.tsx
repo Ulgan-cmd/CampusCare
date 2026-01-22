@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, User, Building2 } from 'lucide-react';
+import { Loader2, Mail, Lock, User } from 'lucide-react';
+import srmLogo from '@/assets/srm-logo.png';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -76,11 +77,8 @@ const Login = () => {
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground font-bold text-2xl mb-4 shadow-lg">
-            CI
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Campus Issue Reporting</h1>
-          <p className="text-muted-foreground mt-2">AI-Powered Infrastructure Management</p>
+          <img src={srmLogo} alt="SRM Logo" className="h-20 w-auto mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-primary">Campus Fix</h1>
         </div>
 
         <Card className="border-border shadow-xl">
@@ -207,21 +205,6 @@ const Login = () => {
               </form>
             </TabsContent>
           </Tabs>
-        </Card>
-
-        {/* Info Card */}
-        <Card className="mt-4 border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Building2 className="h-5 w-5 text-primary mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Role Detection</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your role (Student or Maintenance) is automatically assigned based on your email address.
-                </p>
-              </div>
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>
