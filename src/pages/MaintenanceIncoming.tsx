@@ -11,10 +11,12 @@ import {
   Clock, 
   AlertTriangle,
   Search,
-  Filter,
   Loader2,
   Calendar,
-  User
+  User,
+  MapPin,
+  ArrowRight,
+  TrendingUp
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -110,63 +112,78 @@ const MaintenanceIncoming = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Incoming Issues</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage newly submitted campus issues
-          </p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Incoming Issues</h1>
+            <p className="text-muted-foreground mt-1">
+              View and manage newly submitted campus issues
+            </p>
+          </div>
+          <Button onClick={() => navigate('/maintenance/work')} variant="outline" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Work & Resolution
+          </Button>
         </div>
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="p-4">
+          <Card className="bg-gradient-to-br from-muted/50 to-transparent border-border hover:shadow-lg transition-shadow group">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Issues</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground font-medium">Total Issues</p>
+                  <p className="text-3xl font-bold mt-1">{stats.total}</p>
                 </div>
-                <Inbox className="h-8 w-8 text-muted-foreground" />
+                <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/10 transition-colors">
+                  <Inbox className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
+          <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20 hover:shadow-lg transition-shadow">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">New Submissions</p>
-                  <p className="text-2xl font-bold text-primary">{stats.submitted}</p>
+                  <p className="text-sm text-muted-foreground font-medium">New Submissions</p>
+                  <p className="text-3xl font-bold text-primary mt-1">{stats.submitted}</p>
                 </div>
-                <Clock className="h-8 w-8 text-primary" />
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
+          <Card className="bg-gradient-to-br from-warning/10 to-transparent border-warning/20 hover:shadow-lg transition-shadow">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">In Progress</p>
-                  <p className="text-2xl font-bold text-warning">{stats.inProgress}</p>
+                  <p className="text-sm text-muted-foreground font-medium">In Progress</p>
+                  <p className="text-3xl font-bold text-warning mt-1">{stats.inProgress}</p>
                 </div>
-                <Loader2 className="h-8 w-8 text-warning" />
+                <div className="p-3 rounded-xl bg-warning/10">
+                  <Loader2 className="h-6 w-6 text-warning" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
+          <Card className="bg-gradient-to-br from-destructive/10 to-transparent border-destructive/20 hover:shadow-lg transition-shadow">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">High Priority</p>
-                  <p className="text-2xl font-bold text-destructive">{stats.highSeverity}</p>
+                  <p className="text-sm text-muted-foreground font-medium">High Priority</p>
+                  <p className="text-3xl font-bold text-destructive mt-1">{stats.highSeverity}</p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-destructive" />
+                <div className="p-3 rounded-xl bg-destructive/10">
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="shadow-md">
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
@@ -175,11 +192,11 @@ const MaintenanceIncoming = () => {
                   placeholder="Search by location or description..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11"
                 />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full md:w-[180px]">
+                <SelectTrigger className="w-full md:w-[180px] h-11">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -192,7 +209,7 @@ const MaintenanceIncoming = () => {
                 </SelectContent>
               </Select>
               <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-full md:w-[150px]">
+                <SelectTrigger className="w-full md:w-[150px] h-11">
                   <SelectValue placeholder="Severity" />
                 </SelectTrigger>
                 <SelectContent>
@@ -203,7 +220,7 @@ const MaintenanceIncoming = () => {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[150px]">
+                <SelectTrigger className="w-full md:w-[150px] h-11">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -219,17 +236,19 @@ const MaintenanceIncoming = () => {
 
         {/* Issues Table */}
         {loading ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <Card className="shadow-lg">
+            <CardContent className="py-16 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Loading issues...</p>
             </CardContent>
           </Card>
         ) : filteredIssues.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Issues Found</h3>
+          <Card className="shadow-lg">
+            <CardContent className="py-16 text-center">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Inbox className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No Issues Found</h3>
               <p className="text-muted-foreground">
                 No issues match your current filters.
               </p>
@@ -240,28 +259,28 @@ const MaintenanceIncoming = () => {
             {filteredIssues.map((issue) => (
               <Card 
                 key={issue.id} 
-                className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary"
                 onClick={() => navigate(`/maintenance/work?issue=${issue.id}`)}
               >
                 <CardContent className="p-0">
                   <div className="flex flex-col sm:flex-row">
                     {/* Image Thumbnail */}
                     {issue.image_url && (
-                      <div className="sm:w-32 h-24 sm:h-auto bg-muted shrink-0">
+                      <div className="sm:w-40 h-28 sm:h-auto bg-muted shrink-0 overflow-hidden">
                         <img
                           src={issue.image_url}
                           alt="Issue"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                     )}
                     
                     {/* Content */}
-                    <div className="flex-1 p-4">
+                    <div className="flex-1 p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
                               {categoryLabels[issue.category]}
                             </h3>
                             <Badge className={getSeverityColor(issue.severity)}>
@@ -272,32 +291,27 @@ const MaintenanceIncoming = () => {
                             </span>
                           </div>
                           
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
-                            {issue.confidence && (
-                              <span className="flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                {issue.confidence}% confidence
+                          <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground flex-wrap">
+                            {issue.location && (
+                              <span className="flex items-center gap-1.5">
+                                <MapPin className="h-4 w-4 text-primary" />
+                                {issue.location}
                               </span>
                             )}
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
+                            <span className="flex items-center gap-1.5">
+                              <User className="h-4 w-4" />
                               {issue.student_id.slice(0, 8)}...
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="h-4 w-4" />
                               {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
                             </span>
                           </div>
-
-                          {issue.location && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              📍 {issue.location}
-                            </p>
-                          )}
                         </div>
 
-                        <Button variant="outline" size="sm">
-                          View Details
+                        <Button variant="ghost" size="sm" className="gap-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          View
+                          <ArrowRight className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

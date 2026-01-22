@@ -18,9 +18,12 @@ import {
   Calendar,
   User,
   MessageSquare,
-  Award
+  Award,
+  Clock,
+  ArrowLeft
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 type IssueStatus = 'submitted' | 'in_progress' | 'resolved';
 type IssueSeverity = 'low' | 'medium' | 'high';
@@ -52,6 +55,7 @@ const categoryLabels: Record<IssueCategory, string> = {
 const MaintenanceWork = () => {
   const [searchParams] = useSearchParams();
   const issueId = searchParams.get('issue');
+  const navigate = useNavigate();
   
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
@@ -153,58 +157,77 @@ const MaintenanceWork = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Work & Resolution</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage active issues and update their status
-          </p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Work & Resolution</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage active issues and update their status
+            </p>
+          </div>
+          <Button onClick={() => navigate('/maintenance/incoming')} variant="outline" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Incoming
+          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Issues List */}
           <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="shadow-lg">
+              <CardHeader className="pb-3 border-b border-border">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-primary" />
+                  <div className="p-2 rounded-lg bg-primary text-primary-foreground">
+                    <Wrench className="h-5 w-5" />
+                  </div>
                   Active Issues
                 </CardTitle>
                 <CardDescription>
                   {activeIssues.length} issues pending resolution
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
+              <CardContent className="space-y-2 max-h-[600px] overflow-y-auto pt-4">
                 {loading ? (
                   <div className="text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                   </div>
                 ) : activeIssues.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success" />
-                    <p>All issues resolved!</p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle className="h-8 w-8 text-success" />
+                    </div>
+                    <p className="font-medium">All issues resolved!</p>
+                    <p className="text-sm mt-1">Great work team!</p>
                   </div>
                 ) : (
                   activeIssues.map((issue) => (
                     <div
                       key={issue.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         selectedIssue?.id === issue.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border hover:border-primary/50'
+                          ? 'border-primary bg-primary/5 shadow-md' 
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
                       }`}
                       onClick={() => handleSelectIssue(issue)}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold">
                           {categoryLabels[issue.category]}
                         </span>
                         <Badge className={`${getSeverityColor(issue.severity)} text-xs`}>
                           {issue.severity}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                        <Clock className="h-3 w-3" />
                         {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
                       </div>
+                      {issue.location && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {issue.location}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -218,23 +241,23 @@ const MaintenanceWork = () => {
               <div className="space-y-4">
                 {/* Issue Image */}
                 {selectedIssue.image_url && (
-                  <Card className="overflow-hidden">
+                  <Card className="overflow-hidden shadow-lg">
                     <img
                       src={selectedIssue.image_url}
                       alt="Issue"
-                      className="w-full h-64 object-cover"
+                      className="w-full h-72 object-cover"
                     />
                   </Card>
                 )}
 
                 {/* Issue Info */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
+                <Card className="shadow-lg">
+                  <CardHeader className="border-b border-border">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-3 text-2xl">
                           {categoryLabels[selectedIssue.category]}
-                          <Badge className={getSeverityColor(selectedIssue.severity)}>
+                          <Badge className={`${getSeverityColor(selectedIssue.severity)} text-sm`}>
                             {selectedIssue.severity}
                           </Badge>
                         </CardTitle>
@@ -242,53 +265,67 @@ const MaintenanceWork = () => {
                           Issue ID: {selectedIssue.id.slice(0, 8)}...
                         </CardDescription>
                       </div>
-                      <span className={`status-badge ${getStatusColor(selectedIssue.status)}`}>
+                      <span className={`status-badge ${getStatusColor(selectedIssue.status)} text-sm px-4 py-1.5`}>
                         {selectedIssue.status.replace('_', ' ')}
                       </span>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 pt-6">
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedIssue.location || 'No location specified'}</span>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Location</p>
+                          <p className="font-medium">{selectedIssue.location || 'Not specified'}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{format(new Date(selectedIssue.created_at), 'PPp')}</span>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Reported</p>
+                          <p className="font-medium">{format(new Date(selectedIssue.created_at), 'PPp')}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span>Student: {selectedIssue.student_id.slice(0, 12)}...</span>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                        <User className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Student ID</p>
+                          <p className="font-medium">{selectedIssue.student_id.slice(0, 12)}...</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                        <span>AI Confidence: {selectedIssue.confidence || 'N/A'}%</span>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                        <AlertTriangle className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Confidence</p>
+                          <p className="font-medium">{selectedIssue.confidence || 'N/A'}%</p>
+                        </div>
                       </div>
                     </div>
 
                     {selectedIssue.description && (
-                      <div>
+                      <div className="p-4 bg-muted/30 rounded-xl">
                         <Label className="text-xs text-muted-foreground">Description</Label>
-                        <p className="mt-1 text-sm">{selectedIssue.description}</p>
+                        <p className="mt-1">{selectedIssue.description}</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Update Form */}
-                <Card>
-                  <CardHeader>
+                <Card className="shadow-lg">
+                  <CardHeader className="border-b border-border">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-primary" />
+                      <div className="p-2 rounded-lg bg-primary text-primary-foreground">
+                        <MessageSquare className="h-5 w-5" />
+                      </div>
                       Update Issue
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5 pt-6">
                     <div className="space-y-2">
-                      <Label>Status</Label>
+                      <Label className="text-sm font-medium">Status</Label>
                       <Select value={newStatus} onValueChange={(v) => setNewStatus(v as IssueStatus)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -300,19 +337,22 @@ const MaintenanceWork = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Admin Comments</Label>
+                      <Label className="text-sm font-medium">Admin Comments</Label>
                       <Textarea
                         placeholder="Add notes about the resolution, work done, etc."
                         value={adminComment}
                         onChange={(e) => setAdminComment(e.target.value)}
                         rows={4}
+                        className="resize-none"
                       />
                     </div>
 
                     {newStatus === 'resolved' && selectedIssue.status !== 'resolved' && (
-                      <div className="flex items-center gap-2 p-3 bg-success/10 rounded-lg">
-                        <Award className="h-5 w-5 text-success" />
-                        <span className="text-sm text-success">
+                      <div className="flex items-center gap-3 p-4 bg-success/10 rounded-xl border border-success/20">
+                        <div className="p-2 rounded-lg bg-success text-success-foreground">
+                          <Award className="h-5 w-5" />
+                        </div>
+                        <span className="text-sm font-medium text-success">
                           Student will receive 10 points for this validated issue
                         </span>
                       </div>
@@ -320,17 +360,17 @@ const MaintenanceWork = () => {
 
                     <Button 
                       onClick={handleUpdateIssue} 
-                      className="w-full"
+                      className="w-full h-12 text-lg font-semibold shadow-lg"
                       disabled={updating || !newStatus}
                     >
                       {updating ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                           Updating...
                         </>
                       ) : (
                         <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
+                          <CheckCircle className="mr-2 h-5 w-5" />
                           Update Issue
                         </>
                       )}
@@ -339,11 +379,13 @@ const MaintenanceWork = () => {
                 </Card>
               </div>
             ) : (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Select an Issue</h3>
-                  <p className="text-muted-foreground">
+              <Card className="shadow-lg">
+                <CardContent className="py-20 text-center">
+                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+                    <Wrench className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Select an Issue</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto">
                     Choose an issue from the list to view details and manage its status.
                   </p>
                 </CardContent>

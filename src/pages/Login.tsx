@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
-import srmLogo from '@/assets/srm-logo.png';
+import srmLogo from '@/assets/srm-logo-new.png';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);

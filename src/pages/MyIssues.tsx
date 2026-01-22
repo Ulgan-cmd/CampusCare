@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +13,9 @@ import {
   AlertTriangle,
   MapPin,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -44,21 +46,24 @@ const categoryLabels: Record<IssueCategory, string> = {
   others: 'Others',
 };
 
-const statusConfig: Record<IssueStatus, { label: string; class: string; icon: React.ReactNode }> = {
+const statusConfig: Record<IssueStatus, { label: string; class: string; icon: React.ReactNode; color: string }> = {
   submitted: { 
     label: 'Submitted', 
     class: 'status-badge-submitted',
-    icon: <Clock className="h-3 w-3" />
+    icon: <Clock className="h-3 w-3" />,
+    color: 'bg-primary'
   },
   in_progress: { 
     label: 'In Progress', 
     class: 'status-badge-in-progress',
-    icon: <Loader2 className="h-3 w-3 animate-spin" />
+    icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    color: 'bg-warning'
   },
   resolved: { 
     label: 'Resolved', 
     class: 'status-badge-resolved',
-    icon: <CheckCircle className="h-3 w-3" />
+    icon: <CheckCircle className="h-3 w-3" />,
+    color: 'bg-success'
   },
 };
 
@@ -157,30 +162,60 @@ const MyIssues = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">My Issues</h1>
+            <h1 className="text-3xl font-bold text-foreground">My Issues</h1>
             <p className="text-muted-foreground mt-1">
-              Track the status of your reported issues
+              Track the status of your reported issues in real-time
             </p>
           </div>
-          <Button onClick={() => navigate('/report')}>
+          <Button onClick={() => navigate('/report')} className="gap-2 shadow-md">
+            <Plus className="h-4 w-4" />
             Report New Issue
           </Button>
         </div>
 
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold text-primary">{counts.all}</p>
+              <p className="text-sm text-muted-foreground">Total</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold text-primary">{counts.submitted}</p>
+              <p className="text-sm text-muted-foreground">Submitted</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-warning/10 to-transparent border-warning/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold text-warning">{counts.in_progress}</p>
+              <p className="text-sm text-muted-foreground">In Progress</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-success/10 to-transparent border-success/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold text-success">{counts.resolved}</p>
+              <p className="text-sm text-muted-foreground">Resolved</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 p-1 bg-muted/50 rounded-xl">
           {(['all', 'submitted', 'in_progress', 'resolved'] as const).map((status) => (
             <Button
               key={status}
-              variant={filter === status ? 'default' : 'outline'}
+              variant={filter === status ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setFilter(status)}
-              className="gap-2"
+              className={`gap-2 rounded-lg ${filter === status ? 'shadow-md' : ''}`}
             >
               {status === 'all' ? 'All' : statusConfig[status as IssueStatus].label}
-              <Badge variant="secondary" className="ml-1">
+              <Badge variant={filter === status ? 'secondary' : 'outline'} className="ml-1 text-xs">
                 {counts[status]}
               </Badge>
             </Button>
@@ -189,24 +224,27 @@ const MyIssues = () => {
 
         {/* Issues List */}
         {loading ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <Card className="shadow-lg">
+            <CardContent className="py-16 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Loading your issues...</p>
             </CardContent>
           </Card>
         ) : filteredIssues.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Issues Found</h3>
-              <p className="text-muted-foreground mb-4">
+          <Card className="shadow-lg">
+            <CardContent className="py-16 text-center">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No Issues Found</h3>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 {filter === 'all' 
-                  ? "You haven't reported any issues yet." 
+                  ? "You haven't reported any issues yet. Help us keep the campus clean!" 
                   : `No ${filter.replace('_', ' ')} issues.`}
               </p>
               {filter === 'all' && (
-                <Button onClick={() => navigate('/report')}>
+                <Button onClick={() => navigate('/report')} className="gap-2 shadow-md">
+                  <Plus className="h-4 w-4" />
                   Report Your First Issue
                 </Button>
               )}
@@ -215,28 +253,28 @@ const MyIssues = () => {
         ) : (
           <div className="grid gap-4">
             {filteredIssues.map((issue) => (
-              <Card key={issue.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <Card key={issue.id} className="overflow-hidden hover:shadow-lg transition-all group">
                 <CardContent className="p-0">
                   <div className="flex flex-col sm:flex-row">
                     {/* Image */}
                     {issue.image_url && (
-                      <div className="sm:w-48 h-32 sm:h-auto bg-muted shrink-0">
+                      <div className="sm:w-52 h-36 sm:h-auto bg-muted shrink-0 overflow-hidden">
                         <img
                           src={issue.image_url}
                           alt="Issue"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                     )}
                     
                     {/* Content */}
-                    <div className="flex-1 p-4">
+                    <div className="flex-1 p-5">
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
-                          <h3 className="font-semibold text-lg">
+                          <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
                             {categoryLabels[issue.category]}
                           </h3>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
                             <Badge className={getSeverityColor(issue.severity)}>
                               {issue.severity}
                             </Badge>
@@ -248,10 +286,10 @@ const MyIssues = () => {
                         </div>
                       </div>
 
-                      <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                      <div className="mt-4 space-y-2 text-sm text-muted-foreground">
                         {issue.location && (
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
+                            <MapPin className="h-4 w-4 text-primary" />
                             <span>{issue.location}</span>
                           </div>
                         )}
@@ -262,35 +300,50 @@ const MyIssues = () => {
                       </div>
 
                       {issue.admin_comments && (
-                        <div className="mt-3 p-3 bg-muted rounded-lg">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Admin Comments:</p>
+                        <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                          <div className="flex items-center gap-2 text-xs font-medium text-primary mb-1">
+                            <MessageSquare className="h-3 w-3" />
+                            Maintenance Response
+                          </div>
                           <p className="text-sm">{issue.admin_comments}</p>
                         </div>
                       )}
 
                       {/* Status Progress */}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 flex-1 rounded-full ${
-                            issue.status === 'submitted' || issue.status === 'in_progress' || issue.status === 'resolved' 
-                              ? 'bg-primary' 
-                              : 'bg-muted'
-                          }`} />
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          <div className={`h-2 flex-1 rounded-full ${
-                            issue.status === 'in_progress' || issue.status === 'resolved' 
-                              ? 'bg-warning' 
-                              : 'bg-muted'
-                          }`} />
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          <div className={`h-2 flex-1 rounded-full ${
-                            issue.status === 'resolved' ? 'bg-success' : 'bg-muted'
-                          }`} />
+                      <div className="mt-5">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 relative">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-500 ${
+                                issue.status === 'submitted' || issue.status === 'in_progress' || issue.status === 'resolved' 
+                                  ? 'bg-primary w-full' 
+                                  : 'w-0'
+                              }`} />
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 relative">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-500 ${
+                                issue.status === 'in_progress' || issue.status === 'resolved' 
+                                  ? 'bg-warning w-full' 
+                                  : 'w-0'
+                              }`} />
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 relative">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-500 ${
+                                issue.status === 'resolved' ? 'bg-success w-full' : 'w-0'
+                              }`} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>Submitted</span>
-                          <span>In Progress</span>
-                          <span>Resolved</span>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
+                          <span className={issue.status === 'submitted' ? 'text-primary font-medium' : ''}>Submitted</span>
+                          <span className={issue.status === 'in_progress' ? 'text-warning font-medium' : ''}>In Progress</span>
+                          <span className={issue.status === 'resolved' ? 'text-success font-medium' : ''}>Resolved</span>
                         </div>
                       </div>
                     </div>

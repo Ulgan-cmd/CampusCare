@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import srmLogo from '@/assets/srm-logo.png';
+import srmLogo from '@/assets/srm-logo-new.png';
 
 export const Header = () => {
   const { user, role, signOut } = useAuth();
