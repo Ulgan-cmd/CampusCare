@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -19,20 +19,10 @@ import {
   Send,
   Bot,
   User as UserIcon,
-  MapPin,
-  Clock,
-  Sparkles
 } from 'lucide-react';
 
 type IssueCategory = 'water_leak' | 'cleanliness' | 'furniture_damage' | 'electrical_issue' | 'others';
 type IssueSeverity = 'low' | 'medium' | 'high';
-
-interface AIAnalysis {
-  category: IssueCategory;
-  severity: IssueSeverity;
-  confidence: number;
-  description: string;
-}
 
 interface ChatMessage {
   role: 'ai' | 'user';
@@ -47,16 +37,22 @@ const categoryLabels: Record<IssueCategory, string> = {
   others: 'Others',
 };
 
+const severityLabels: Record<IssueSeverity, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+};
+
 const ReportIssue = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<'upload' | 'analysis' | 'chat' | 'submit' | 'success'>('upload');
+  const [step, setStep] = useState<'upload' | 'chat' | 'submit' | 'success'>('upload');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [category, setCategory] = useState<IssueCategory | ''>('');
+  const [severity, setSeverity] = useState<IssueSeverity | ''>('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState('');
   const [location, setLocation] = useState('');
@@ -75,34 +71,17 @@ const ReportIssue = () => {
     }
   };
 
-  const analyzeImage = async () => {
-    if (!imageFile) return;
+  const proceedToChat = () => {
+    if (!imageFile || !category || !severity) {
+      toast.error('Please upload an image and select category and severity');
+      return;
+    }
 
-    setAnalyzing(true);
-
-    // Simulate AI analysis (in production, this would call an edge function)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Mock AI analysis result
-    const categories: IssueCategory[] = ['water_leak', 'cleanliness', 'furniture_damage', 'electrical_issue', 'others'];
-    const severities: IssueSeverity[] = ['low', 'medium', 'high'];
-    
-    const mockAnalysis: AIAnalysis = {
-      category: categories[Math.floor(Math.random() * categories.length)],
-      severity: severities[Math.floor(Math.random() * severities.length)],
-      confidence: Math.floor(Math.random() * 30) + 70, // 70-99%
-      description: 'AI has analyzed the image and identified the issue type. Please provide additional details.',
-    };
-
-    setAnalysis(mockAnalysis);
-    setAnalyzing(false);
     setStep('chat');
-
-    // Start chat with AI
     setChatMessages([
       {
         role: 'ai',
-        content: `I've analyzed your image and detected a **${categoryLabels[mockAnalysis.category]}** issue with **${mockAnalysis.severity}** severity (${mockAnalysis.confidence}% confidence).\n\nTo complete your report, please answer a few questions:\n\n**Where exactly is this issue located?** (e.g., Building A, Room 101)`,
+        content: `You've selected **${categoryLabels[category]}** with **${severity}** severity.\n\nTo complete your report, please answer a few questions:\n\n**Where exactly is this issue located?** (e.g., Building A, Room 101)`,
       },
     ]);
   };
@@ -112,7 +91,6 @@ const ReportIssue = () => {
 
     const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', content: userInput }];
 
-    // Determine which question to ask next
     if (!location) {
       setLocation(userInput);
       newMessages.push({
@@ -123,7 +101,7 @@ const ReportIssue = () => {
       setUrgency(userInput);
       newMessages.push({
         role: 'ai',
-        content: `Thank you! I've gathered all the information needed.\n\n**Summary:**\n- **Category:** ${analysis ? categoryLabels[analysis.category] : 'Unknown'}\n- **Severity:** ${analysis?.severity}\n- **Location:** ${location}\n- **Urgency:** ${userInput}\n- **AI Confidence:** ${analysis?.confidence}%\n\nPlease review and click "Submit Issue" when ready.`,
+        content: `Thank you! I've gathered all the information needed.\n\n**Summary:**\n- **Category:** ${category ? categoryLabels[category] : 'Unknown'}\n- **Severity:** ${severity}\n- **Location:** ${location}\n- **Urgency:** ${userInput}\n\nPlease review and click "Submit Issue" when ready.`,
       });
       setStep('submit');
     }
@@ -133,7 +111,7 @@ const ReportIssue = () => {
   };
 
   const submitIssue = async () => {
-    if (!user || !imageFile || !analysis) return;
+    if (!user || !imageFile || !category || !severity) return;
 
     setSubmitting(true);
 
@@ -154,20 +132,42 @@ const ReportIssue = () => {
         .getPublicUrl(fileName);
 
       // Create issue in database
-      const { error: issueError } = await supabase.from('issues').insert({
+      const { data: issueData, error: issueError } = await supabase.from('issues').insert({
         student_id: user.id,
         image_url: urlData.publicUrl,
-        category: analysis.category,
-        severity: analysis.severity,
-        confidence: analysis.confidence,
+        category: category,
+        severity: severity,
+        confidence: 100, // Manual selection = 100% confidence
         location: location,
-        description: `AI Analysis: ${categoryLabels[analysis.category]}. Location: ${location}. Urgency: ${urgency}. Confidence: ${analysis.confidence}%`,
+        description: `Category: ${categoryLabels[category]}. Location: ${location}. Urgency: ${urgency}.`,
         status: 'submitted',
-      });
+      }).select().single();
 
       if (issueError) throw issueError;
 
-      // Trigger email notification (would be handled by edge function in production)
+      // Send email notification via edge function
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-issue-notification', {
+          body: {
+            issueId: issueData.id,
+            category: categoryLabels[category],
+            severity: severity,
+            location: location,
+            urgency: urgency,
+            imageUrl: urlData.publicUrl,
+            studentEmail: user.email,
+          },
+        });
+
+        if (emailError) {
+          console.error('Email notification failed:', emailError);
+          // Don't throw - issue is still submitted successfully
+        }
+      } catch (emailErr) {
+        console.error('Email notification error:', emailErr);
+        // Don't throw - issue is still submitted successfully
+      }
+
       setStep('success');
       toast.success('Issue submitted successfully!');
 
@@ -179,8 +179,8 @@ const ReportIssue = () => {
     }
   };
 
-  const getSeverityColor = (severity: IssueSeverity) => {
-    switch (severity) {
+  const getSeverityColor = (sev: IssueSeverity) => {
+    switch (sev) {
       case 'low': return 'severity-badge-low';
       case 'medium': return 'severity-badge-medium';
       case 'high': return 'severity-badge-high';
@@ -193,7 +193,7 @@ const ReportIssue = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Report an Issue</h1>
           <p className="text-muted-foreground mt-1">
-            Upload an image and let AI help you report campus issues quickly.
+            Upload an image and select the issue category to report campus issues.
           </p>
         </div>
 
@@ -203,14 +203,14 @@ const ReportIssue = () => {
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step !== 'upload' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
               {step !== 'upload' ? <CheckCircle className="h-4 w-4" /> : '1'}
             </div>
-            <span>Upload</span>
+            <span>Upload & Select</span>
           </div>
           <div className="flex-1 h-0.5 bg-muted mx-2" />
           <div className={`flex items-center gap-2 ${['chat', 'submit', 'success'].includes(step) ? 'text-primary' : 'text-muted-foreground'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['chat', 'submit', 'success'].includes(step) ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-              {['chat', 'submit', 'success'].includes(step) ? <CheckCircle className="h-4 w-4" /> : '2'}
+              {['submit', 'success'].includes(step) ? <CheckCircle className="h-4 w-4" /> : '2'}
             </div>
-            <span>Analyze</span>
+            <span>Details</span>
           </div>
           <div className="flex-1 h-0.5 bg-muted mx-2" />
           <div className={`flex items-center gap-2 ${step === 'success' ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -227,13 +227,13 @@ const ReportIssue = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5 text-primary" />
-                Upload Issue Image
+                Upload Issue Image & Select Category
               </CardTitle>
               <CardDescription>
-                Take a photo or upload an existing image of the campus issue.
+                Take a photo or upload an existing image and select the issue type.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div
                 className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
@@ -268,35 +268,43 @@ const ReportIssue = () => {
                 />
               </div>
 
-              {imageFile && (
-                <Button onClick={analyzeImage} className="w-full" disabled={analyzing}>
-                  {analyzing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing with AI...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Analyze Image
-                    </>
-                  )}
+              {/* Category Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Issue Category</Label>
+                <Select value={category} onValueChange={(val) => setCategory(val as IssueCategory)}>
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select issue category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="water_leak">Water Leak</SelectItem>
+                    <SelectItem value="cleanliness">Cleanliness</SelectItem>
+                    <SelectItem value="furniture_damage">Furniture Damage</SelectItem>
+                    <SelectItem value="electrical_issue">Electrical Issue</SelectItem>
+                    <SelectItem value="others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Severity Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="severity">Severity Level</Label>
+                <Select value={severity} onValueChange={(val) => setSeverity(val as IssueSeverity)}>
+                  <SelectTrigger id="severity">
+                    <SelectValue placeholder="Select severity level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low - Can wait</SelectItem>
+                    <SelectItem value="medium">Medium - Needs attention soon</SelectItem>
+                    <SelectItem value="high">High - Urgent / Emergency</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {imageFile && category && severity && (
+                <Button onClick={proceedToChat} className="w-full">
+                  Continue to Details
                 </Button>
               )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Analysis Loading */}
-        {step === 'analysis' && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <h3 className="text-lg font-semibold">Analyzing Image...</h3>
-              <p className="text-muted-foreground mt-2">
-                AI is identifying the issue category and severity.
-              </p>
-              <Progress value={66} className="mt-6 max-w-xs mx-auto" />
             </CardContent>
           </Card>
         )}
@@ -304,8 +312,8 @@ const ReportIssue = () => {
         {/* Chat & Submit Steps */}
         {['chat', 'submit'].includes(step) && (
           <>
-            {/* Analysis Result */}
-            {analysis && (
+            {/* Selected Options */}
+            {category && severity && (
               <Card className="border-primary/20">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
@@ -318,20 +326,17 @@ const ReportIssue = () => {
                         />
                       )}
                       <div>
-                        <h3 className="font-semibold">{categoryLabels[analysis.category]}</h3>
+                        <h3 className="font-semibold">{categoryLabels[category]}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge className={getSeverityColor(analysis.severity)}>
-                            {analysis.severity}
+                          <Badge className={getSeverityColor(severity)}>
+                            {severity}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {analysis.confidence}% confidence
-                          </span>
                         </div>
                       </div>
                     </div>
                     <AlertTriangle className={`h-6 w-6 ${
-                      analysis.severity === 'high' ? 'text-destructive' :
-                      analysis.severity === 'medium' ? 'text-warning' : 'text-success'
+                      severity === 'high' ? 'text-destructive' :
+                      severity === 'medium' ? 'text-warning' : 'text-success'
                     }`} />
                   </div>
                 </CardContent>
@@ -343,7 +348,7 @@ const ReportIssue = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Bot className="h-5 w-5 text-primary" />
-                  AI Assistant
+                  Issue Details
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -420,7 +425,8 @@ const ReportIssue = () => {
                   setStep('upload');
                   setImageFile(null);
                   setImagePreview(null);
-                  setAnalysis(null);
+                  setCategory('');
+                  setSeverity('');
                   setChatMessages([]);
                   setLocation('');
                   setUrgency('');
