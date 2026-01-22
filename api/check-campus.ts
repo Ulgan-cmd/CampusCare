@@ -32,7 +32,11 @@ export default async function handler(
 
   const data = await radarRes.json();
 
-  const insideCampus = data?.geofences?.length > 0;
+  // ✅ STRICT CHECK (THIS FIXES THE LAPTOP ISSUE)
+  const insideCampus =
+    data?.events?.some(
+      (e: any) => e.type === "user.entered_geofence"
+    ) === true;
 
   return res.status(200).json({ insideCampus });
 }
