@@ -123,6 +123,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_points: {
+        Args: { points_to_add: number; user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "student" | "maintenance"
