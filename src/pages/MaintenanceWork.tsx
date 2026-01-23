@@ -63,6 +63,7 @@ const MaintenanceWork = () => {
   const [updating, setUpdating] = useState(false);
   const [newStatus, setNewStatus] = useState<IssueStatus | ''>('');
   const [adminComment, setAdminComment] = useState('');
+  const [previousStatus, setPreviousStatus] = useState<IssueStatus | ''>('');
 
   useEffect(() => {
     const fetchIssues = async () => {
@@ -82,6 +83,7 @@ const MaintenanceWork = () => {
           if (issue) {
             setSelectedIssue(issue);
             setNewStatus(issue.status);
+            setPreviousStatus(issue.status);
             setAdminComment(issue.admin_comments || '');
           }
         }
@@ -98,6 +100,7 @@ const MaintenanceWork = () => {
   const handleSelectIssue = (issue: Issue) => {
     setSelectedIssue(issue);
     setNewStatus(issue.status);
+    setPreviousStatus(issue.status);
     setAdminComment(issue.admin_comments || '');
   };
 
@@ -119,6 +122,14 @@ const MaintenanceWork = () => {
 
       if (error) throw error;
 
+      // Award 50 points if status changed to resolved
+      if (newStatus === 'resolved' && previousStatus !== 'resolved') {
+        await supabase.rpc('increment_points', { 
+          user_id: selectedIssue.student_id, 
+          points_to_add: 50 
+        });
+      }
+
       // Update local state
       setIssues(prev => prev.map(i => 
         i.id === selectedIssue.id 
@@ -126,6 +137,7 @@ const MaintenanceWork = () => {
           : i
       ));
       setSelectedIssue(prev => prev ? { ...prev, status: newStatus, admin_comments: adminComment || null } : null);
+      setPreviousStatus(newStatus);
 
       toast.success('Issue updated successfully!');
     } catch (err) {
@@ -353,7 +365,7 @@ const MaintenanceWork = () => {
                           <Award className="h-5 w-5" />
                         </div>
                         <span className="text-sm font-medium text-success">
-                          Student will receive 10 points for this validated issue
+                          Student will receive 50 points for this resolved issue
                         </span>
                       </div>
                     )}

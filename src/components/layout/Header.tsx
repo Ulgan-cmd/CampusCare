@@ -36,7 +36,7 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to={role === 'maintenance' ? '/maintenance/incoming' : '/dashboard'} className="flex items-center gap-3">
-            <span className="font-bold text-xl text-primary">Campus Fix</span>
+            <span className="font-bold text-xl text-primary">Campus Care</span>
           </Link>
         </div>
 

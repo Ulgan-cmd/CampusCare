@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   AlertTriangle, 
@@ -12,25 +11,22 @@ import {
   Clock, 
   Plus, 
   Trophy, 
-  Star, 
   TrendingUp,
   FileText,
   Camera,
   ArrowRight,
-  Sparkles
 } from 'lucide-react';
 
 interface Stats {
   submitted: number;
   resolved: number;
   points: number;
-  badges: string[];
 }
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>({ submitted: 0, resolved: 0, points: 0, badges: [] });
+  const [stats, setStats] = useState<Stats>({ submitted: 0, resolved: 0, points: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,10 +45,10 @@ const StudentDashboard = () => {
         const submitted = issues?.length || 0;
         const resolved = issues?.filter(i => i.status === 'resolved').length || 0;
 
-        // Fetch profile for points and badges
+        // Fetch profile for points
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('points, badges')
+          .select('points')
           .eq('id', user.id)
           .single();
 
@@ -62,7 +58,6 @@ const StudentDashboard = () => {
           submitted,
           resolved,
           points: profile?.points || 0,
-          badges: profile?.badges || [],
         });
       } catch (err) {
         console.error('Error fetching stats:', err);
@@ -104,7 +99,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-border hover:shadow-lg transition-shadow group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Issues Submitted</CardTitle>
@@ -140,26 +135,7 @@ const StudentDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-warning">{loading ? '-' : stats.points}</div>
-              <p className="text-xs text-muted-foreground mt-1">For validated reports</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border hover:shadow-lg transition-shadow group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Badges Earned</CardTitle>
-              <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <Star className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{loading ? '-' : stats.badges.length}</div>
-              <div className="flex gap-1 mt-1 flex-wrap">
-                {stats.badges.map((badge, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">
-                    {badge}
-                  </Badge>
-                ))}
-              </div>
+              <p className="text-xs text-muted-foreground mt-1">Valid report: 5 pts • Resolved: 50 pts</p>
             </CardContent>
           </Card>
         </div>

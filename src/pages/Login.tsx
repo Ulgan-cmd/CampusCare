@@ -78,7 +78,7 @@ const Login = () => {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <img src={srmLogo} alt="SRM Logo" className="h-20 w-auto mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-primary">Campus Fix</h1>
+          <h1 className="text-2xl font-bold text-primary">Campus Care</h1>
         </div>
 
         <Card className="border-border shadow-xl">
@@ -149,7 +149,7 @@ const Login = () => {
                       <Input
                         id="signup-name"
                         type="text"
-                        placeholder="John Doe"
+                        placeholder="Enter your full name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="pl-10"

@@ -159,6 +159,16 @@ const MyIssues = () => {
     }
   };
 
+  // Get status step index for progress bar
+  const getStatusStep = (status: IssueStatus): number => {
+    switch (status) {
+      case 'submitted': return 1;
+      case 'in_progress': return 2;
+      case 'resolved': return 3;
+      default: return 0;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -252,105 +262,114 @@ const MyIssues = () => {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredIssues.map((issue) => (
-              <Card key={issue.id} className="overflow-hidden hover:shadow-lg transition-all group">
-                <CardContent className="p-0">
-                  <div className="flex flex-col sm:flex-row">
-                    {/* Image */}
-                    {issue.image_url && (
-                      <div className="sm:w-52 h-36 sm:h-auto bg-muted shrink-0 overflow-hidden">
-                        <img
-                          src={issue.image_url}
-                          alt="Issue"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Content */}
-                    <div className="flex-1 p-5">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div>
-                          <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
-                            {categoryLabels[issue.category]}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <Badge className={getSeverityColor(issue.severity)}>
-                              {issue.severity}
-                            </Badge>
-                            <span className={`status-badge ${statusConfig[issue.status].class}`}>
-                              {statusConfig[issue.status].icon}
-                              <span className="ml-1">{statusConfig[issue.status].label}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                        {issue.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-primary" />
-                            <span>{issue.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Reported {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
-                        </div>
-                      </div>
-
-                      {issue.admin_comments && (
-                        <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
-                          <div className="flex items-center gap-2 text-xs font-medium text-primary mb-1">
-                            <MessageSquare className="h-3 w-3" />
-                            Maintenance Response
-                          </div>
-                          <p className="text-sm">{issue.admin_comments}</p>
+            {filteredIssues.map((issue) => {
+              const statusStep = getStatusStep(issue.status);
+              
+              return (
+                <Card key={issue.id} className="overflow-hidden hover:shadow-lg transition-all group">
+                  <CardContent className="p-0">
+                    <div className="flex flex-col sm:flex-row">
+                      {/* Image */}
+                      {issue.image_url && (
+                        <div className="sm:w-52 h-36 sm:h-auto bg-muted shrink-0 overflow-hidden">
+                          <img
+                            src={issue.image_url}
+                            alt="Issue"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
                       )}
-
-                      {/* Status Progress */}
-                      <div className="mt-5">
-                        <div className="flex items-center gap-1">
-                          <div className="flex-1 relative">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${
-                                issue.status === 'submitted' || issue.status === 'in_progress' || issue.status === 'resolved' 
-                                  ? 'bg-primary w-full' 
-                                  : 'w-0'
-                              }`} />
-                            </div>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 relative">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${
-                                issue.status === 'in_progress' || issue.status === 'resolved' 
-                                  ? 'bg-warning w-full' 
-                                  : 'w-0'
-                              }`} />
-                            </div>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 relative">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${
-                                issue.status === 'resolved' ? 'bg-success w-full' : 'w-0'
-                              }`} />
+                      
+                      {/* Content */}
+                      <div className="flex-1 p-5">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div>
+                            <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                              {categoryLabels[issue.category]}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge className={getSeverityColor(issue.severity)}>
+                                {issue.severity}
+                              </Badge>
+                              <span className={`status-badge ${statusConfig[issue.status].class}`}>
+                                {statusConfig[issue.status].icon}
+                                <span className="ml-1">{statusConfig[issue.status].label}</span>
+                              </span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
-                          <span className={issue.status === 'submitted' ? 'text-primary font-medium' : ''}>Submitted</span>
-                          <span className={issue.status === 'in_progress' ? 'text-warning font-medium' : ''}>In Progress</span>
-                          <span className={issue.status === 'resolved' ? 'text-success font-medium' : ''}>Resolved</span>
+
+                        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                          {issue.location && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-primary" />
+                              <span>{issue.location}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>Reported {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
+                          </div>
+                        </div>
+
+                        {issue.admin_comments && (
+                          <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                            <div className="flex items-center gap-2 text-xs font-medium text-primary mb-1">
+                              <MessageSquare className="h-3 w-3" />
+                              Maintenance Response
+                            </div>
+                            <p className="text-sm">{issue.admin_comments}</p>
+                          </div>
+                        )}
+
+                        {/* Status Progress - Blue color that fills based on status */}
+                        <div className="mt-5">
+                          <div className="flex items-center gap-1">
+                            {/* Submitted */}
+                            <div className="flex-1 relative">
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    statusStep >= 1 ? 'bg-primary w-full' : 'w-0'
+                                  }`} 
+                                />
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            {/* In Progress */}
+                            <div className="flex-1 relative">
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    statusStep >= 2 ? 'bg-primary w-full' : 'w-0'
+                                  }`} 
+                                />
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            {/* Resolved */}
+                            <div className="flex-1 relative">
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    statusStep >= 3 ? 'bg-primary w-full' : 'w-0'
+                                  }`} 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
+                            <span className={statusStep >= 1 ? 'text-primary font-medium' : ''}>Submitted</span>
+                            <span className={statusStep >= 2 ? 'text-primary font-medium' : ''}>In Progress</span>
+                            <span className={statusStep >= 3 ? 'text-primary font-medium' : ''}>Resolved</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
