@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
-import srmLogo from '@/assets/srm-logo-new.png';
+import srmLogo from '@/assets/srm-logo.jpeg';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +18,24 @@ const Login = () => {
   const [name, setName] = useState('');
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+
+  const checkProfileAndRedirect = async (userId: string, userEmail: string) => {
+    // Check if profile is complete
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('profile_completed')
+      .eq('id', userId)
+      .single();
+
+    // Role-based redirect
+    if (userEmail === 'vt9575@srmist.edu.in') {
+      navigate('/maintenance/incoming');
+    } else if (profile?.profile_completed) {
+      navigate('/dashboard');
+    } else {
+      navigate('/profile-setup');
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +49,12 @@ const Login = () => {
         return;
       }
 
-      toast.success('Signed in successfully!');
+      toast.success('Logged in successfully!');
       
-      // Role-based redirect
-      if (email === 'vt9575@srmist.edu.in') {
-        navigate('/maintenance/incoming');
-      } else {
-        navigate('/dashboard');
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkProfileAndRedirect(user.id, user.email || '');
       }
     } catch (err) {
       toast.error('An unexpected error occurred');
@@ -59,11 +77,10 @@ const Login = () => {
 
       toast.success('Account created successfully!');
       
-      // Role-based redirect
-      if (email === 'vt9575@srmist.edu.in') {
-        navigate('/maintenance/incoming');
-      } else {
-        navigate('/dashboard');
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkProfileAndRedirect(user.id, user.email || '');
       }
     } catch (err) {
       toast.error('An unexpected error occurred');
@@ -77,7 +94,7 @@ const Login = () => {
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <img src={srmLogo} alt="SRM Logo" className="h-20 w-auto mx-auto mb-4" />
+          <img src={srmLogo} alt="SRM Logo" className="h-20 w-auto mx-auto mb-4 rounded-full" />
           <h1 className="text-2xl font-bold text-primary">Campus Care</h1>
         </div>
 
@@ -85,7 +102,7 @@ const Login = () => {
           <Tabs defaultValue="signin" className="w-full">
             <CardHeader className="pb-4">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signin">Log In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
             </CardHeader>
@@ -129,10 +146,10 @@ const Login = () => {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in...
+                        Logging in...
                       </>
                     ) : (
-                      'Sign In'
+                      'Log In'
                     )}
                   </Button>
                 </CardFooter>

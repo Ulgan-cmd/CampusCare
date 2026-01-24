@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -15,10 +15,8 @@ import {
   Camera,
   Loader2,
   CheckCircle,
-  AlertTriangle,
   Send,
   Bot,
-  User as UserIcon,
   XCircle,
   ShieldCheck,
   Droplets,
@@ -28,13 +26,26 @@ import {
   HelpCircle,
   MapPin,
   Image as ImageIcon,
+  Flame,
+  HardHat,
+  Wind,
+  FolderOpen,
+  Building,
+  Layers,
+  DoorOpen,
+  Clock,
+  AlertTriangle,
+  AlertOctagon,
 } from 'lucide-react';
 
 type IssueCategory =
-  | 'water_leak'
+  | 'water'
   | 'cleanliness'
   | 'furniture_damage'
   | 'electrical_issue'
+  | 'fire_safety'
+  | 'civil_work'
+  | 'air_emission'
   | 'others';
 
 type IssueSeverity = 'low' | 'medium' | 'high';
@@ -51,26 +62,32 @@ interface ValidationResult {
 }
 
 const categoryLabels: Record<IssueCategory, string> = {
-  water_leak: 'Water Leak',
+  water: 'Water',
   cleanliness: 'Cleanliness',
   furniture_damage: 'Furniture Damage',
   electrical_issue: 'Electrical Issue',
+  fire_safety: 'Fire Safety',
+  civil_work: 'Civil Work',
+  air_emission: 'Air Emission',
   others: 'Others',
 };
 
 const categoryIcons: Record<IssueCategory, React.ReactNode> = {
-  water_leak: <Droplets className="h-5 w-5" />,
+  water: <Droplets className="h-5 w-5" />,
   cleanliness: <Sparkles className="h-5 w-5" />,
   furniture_damage: <Armchair className="h-5 w-5" />,
   electrical_issue: <Zap className="h-5 w-5" />,
+  fire_safety: <Flame className="h-5 w-5" />,
+  civil_work: <HardHat className="h-5 w-5" />,
+  air_emission: <Wind className="h-5 w-5" />,
   others: <HelpCircle className="h-5 w-5" />,
 };
 
-const severityLabels: Record<IssueSeverity, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-};
+const urgencyOptions = [
+  { value: 'can_wait', label: 'Can Wait', description: 'Minor issue, not affecting daily activities', icon: <Clock className="h-5 w-5" />, color: 'border-success bg-success/10 text-success' },
+  { value: 'needs_attention', label: 'Needs Attention', description: 'Should be fixed soon', icon: <AlertTriangle className="h-5 w-5" />, color: 'border-warning bg-warning/10 text-warning' },
+  { value: 'emergency', label: 'Emergency', description: 'Requires immediate action', icon: <AlertOctagon className="h-5 w-5" />, color: 'border-destructive bg-destructive/10 text-destructive' },
+];
 
 // Clean AI text - remove asterisks and format properly
 const cleanAIText = (text: string): string => {
@@ -85,22 +102,27 @@ const ReportIssue = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<
-    'upload' | 'validating' | 'invalid' | 'chat' | 'submit' | 'success'
+    'upload' | 'validating' | 'invalid' | 'location' | 'urgency' | 'submit' | 'success'
   >('upload');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [category, setCategory] = useState<IssueCategory | ''>('');
-  const [severity, setSeverity] = useState<IssueSeverity | ''>('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [userInput, setUserInput] = useState('');
-  const [location, setLocation] = useState('');
-  const [urgency, setUrgency] = useState('');
+  const [otherDescription, setOtherDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [validationResult, setValidationResult] =
-    useState<ValidationResult | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
+
+  // Location fields
+  const [buildingName, setBuildingName] = useState('');
+  const [floorNumber, setFloorNumber] = useState('');
+  const [roomArea, setRoomArea] = useState('');
+  const [currentLocationField, setCurrentLocationField] = useState<'building' | 'floor' | 'room'>('building');
+
+  // Urgency
+  const [selectedUrgency, setSelectedUrgency] = useState('');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -147,7 +169,7 @@ const ReportIssue = () => {
     }
   };
 
-  // Check if user is inside campus using Radar.io
+  // Check if user is inside campus
   const checkCampusLocation = async (): Promise<boolean> => {
     setCheckingLocation(true);
     
@@ -167,7 +189,7 @@ const ReportIssue = () => {
       const MAX_DISTANCE = 1000; // 1km radius
 
       // Calculate distance using Haversine formula
-      const R = 6371e3; // Earth's radius in meters
+      const R = 6371e3;
       const φ1 = (latitude * Math.PI) / 180;
       const φ2 = (CAMPUS_CENTER.latitude * Math.PI) / 180;
       const Δφ = ((CAMPUS_CENTER.latitude - latitude) * Math.PI) / 180;
@@ -195,59 +217,55 @@ const ReportIssue = () => {
     }
   };
 
-  const proceedToChat = async () => {
-    if (!imageFile || !category || !severity) {
-      toast.error('Please upload image and select category & severity');
+  const proceedToLocation = async () => {
+    if (!imageFile || !category) {
+      toast.error('Please upload image and select category');
+      return;
+    }
+
+    if (category === 'others' && !otherDescription.trim()) {
+      toast.error('Please describe the issue');
       return;
     }
 
     const isValid = await validateImage();
     if (!isValid) return;
 
-    setStep('chat');
-    const cleanContent = cleanAIText(
-      `You've selected ${categoryLabels[category]} with ${severity} severity.\n\nWhere exactly is this issue located? Please provide:\n• Building name\n• Floor number\n• Room or area description`
-    );
-    setChatMessages([
-      {
-        role: 'ai' as const,
-        content: cleanContent,
-      },
-    ]);
+    setStep('location');
+    setCurrentLocationField('building');
   };
 
-  const handleChatSubmit = () => {
-    if (!userInput.trim()) return;
-
-    const newMessages: ChatMessage[] = [...chatMessages, { role: 'user' as const, content: userInput }];
-
-    if (!location) {
-      setLocation(userInput);
-      const cleanContent = cleanAIText(
-        'How urgent is this issue?\n\n• Can wait - Minor issue, not affecting daily activities\n• Needs attention - Should be fixed soon\n• Emergency - Requires immediate action'
-      );
-      newMessages.push({
-        role: 'ai' as const,
-        content: cleanContent,
-      });
-    } else if (!urgency) {
-      setUrgency(userInput);
-      const cleanContent = cleanAIText(
-        'Thank you for providing the details.\n\nPlease review your report summary below and click Submit Issue when ready.'
-      );
-      newMessages.push({
-        role: 'ai' as const,
-        content: cleanContent,
-      });
-      setStep('submit');
+  const handleLocationKeyDown = (e: React.KeyboardEvent, field: 'building' | 'floor' | 'room') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (field === 'building' && buildingName.trim()) {
+        setCurrentLocationField('floor');
+      } else if (field === 'floor' && floorNumber.trim()) {
+        setCurrentLocationField('room');
+      } else if (field === 'room' && roomArea.trim()) {
+        setStep('urgency');
+      }
     }
+  };
 
-    setChatMessages(newMessages);
-    setUserInput('');
+  const proceedToUrgency = () => {
+    if (!buildingName.trim() || !floorNumber.trim() || !roomArea.trim()) {
+      toast.error('Please fill in all location fields');
+      return;
+    }
+    setStep('urgency');
+  };
+
+  const proceedToSubmit = () => {
+    if (!selectedUrgency) {
+      toast.error('Please select urgency level');
+      return;
+    }
+    setStep('submit');
   };
 
   const submitIssue = async () => {
-    if (!user || !imageFile || !category || !severity) return;
+    if (!user || !imageFile || !category) return;
 
     // First check if user is inside campus
     const insideCampus = await checkCampusLocation();
@@ -267,15 +285,23 @@ const ReportIssue = () => {
         .from('issue-images')
         .getPublicUrl(fileName);
 
+      const fullLocation = `${buildingName}, Floor ${floorNumber}, ${roomArea}`;
+      const description = category === 'others' 
+        ? `${otherDescription}. Location: ${fullLocation}. Urgency: ${selectedUrgency}`
+        : `Location: ${fullLocation}. Urgency: ${selectedUrgency}`;
+
+      // Map old category to new if needed
+      const categoryToSave = category === 'water' ? 'water' : category;
+
       // Insert issue
       const { error: issueError } = await supabase.from('issues').insert({
         student_id: user.id,
         image_url: urlData.publicUrl,
-        category,
-        severity,
+        category: categoryToSave,
+        severity: selectedUrgency === 'emergency' ? 'high' : selectedUrgency === 'needs_attention' ? 'medium' : 'low',
         confidence: 100,
-        location,
-        description: `Location: ${location}. Urgency: ${urgency}`,
+        location: fullLocation,
+        description,
         status: 'submitted',
       });
 
@@ -289,9 +315,9 @@ const ReportIssue = () => {
         await supabase.functions.invoke('send-issue-notification', {
           body: {
             category: categoryLabels[category],
-            severity,
-            location,
-            description: urgency,
+            severity: selectedUrgency,
+            location: fullLocation,
+            description,
             imageUrl: urlData.publicUrl,
             studentEmail: user.email,
           },
@@ -315,11 +341,18 @@ const ReportIssue = () => {
     setImageFile(null);
     setImagePreview(null);
     setCategory('');
-    setSeverity('');
-    setChatMessages([]);
-    setLocation('');
-    setUrgency('');
+    setOtherDescription('');
+    setBuildingName('');
+    setFloorNumber('');
+    setRoomArea('');
+    setSelectedUrgency('');
     setValidationResult(null);
+    setCurrentLocationField('building');
+  };
+
+  const getStepIndex = () => {
+    const steps = ['upload', 'validating', 'location', 'urgency', 'submit', 'success'];
+    return steps.indexOf(step === 'invalid' ? 'upload' : step);
   };
 
   return (
@@ -327,25 +360,26 @@ const ReportIssue = () => {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Progress Indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {['upload', 'validating', 'chat', 'submit', 'success'].map((s, i) => (
-            <div key={s} className="flex items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                  step === s
-                    ? 'bg-primary text-primary-foreground shadow-lg scale-110'
-                    : ['upload', 'validating', 'chat', 'submit', 'success'].indexOf(step) > i
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {i + 1}
+          {['Upload', 'Location', 'Urgency', 'Submit'].map((label, i) => (
+            <div key={label} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                    getStepIndex() > i
+                      ? 'bg-primary text-primary-foreground'
+                      : getStepIndex() === i || (step === 'validating' && i === 0)
+                      ? 'bg-primary text-primary-foreground shadow-lg scale-110'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {getStepIndex() > i ? <CheckCircle className="h-5 w-5" /> : i + 1}
+                </div>
+                <span className="text-xs mt-1 text-muted-foreground">{label}</span>
               </div>
-              {i < 4 && (
+              {i < 3 && (
                 <div
                   className={`w-12 h-1 mx-1 rounded ${
-                    ['upload', 'validating', 'chat', 'submit', 'success'].indexOf(step) > i
-                      ? 'bg-primary'
-                      : 'bg-muted'
+                    getStepIndex() > i ? 'bg-primary' : 'bg-muted'
                   }`}
                 />
               )}
@@ -362,51 +396,81 @@ const ReportIssue = () => {
               </div>
               <CardTitle className="text-2xl">Report an Issue</CardTitle>
               <CardDescription>
-                Upload a photo and select the issue details
+                Upload a photo and select the issue category
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Image Upload */}
-              <div
-                className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer hover:border-primary hover:bg-primary/5 ${
-                  imagePreview ? 'border-primary bg-primary/5' : 'border-muted-foreground/30'
-                }`}
-                onClick={() => fileInputRef.current?.click()}
-              >
+              {/* Image Upload Options */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Upload Image</Label>
+                
+                {imagePreview ? (
+                  <div 
+                    className="border-2 border-primary rounded-2xl p-4 bg-primary/5 cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-h-48 mx-auto rounded-xl shadow-lg"
+                    />
+                    <p className="text-sm text-muted-foreground text-center mt-3">Click to change image</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Camera */}
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="p-6 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center gap-2"
+                    >
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                      <span className="text-sm font-medium">Camera</span>
+                    </button>
+                    
+                    {/* Gallery */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-6 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center gap-2"
+                    >
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      <span className="text-sm font-medium">Gallery</span>
+                    </button>
+                    
+                    {/* Files */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-6 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center gap-2"
+                    >
+                      <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                      <span className="text-sm font-medium">Files</span>
+                    </button>
+                  </div>
+                )}
+                
                 <input
-                  ref={fileInputRef}
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                {imagePreview ? (
-                  <div className="space-y-4">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="max-h-48 mx-auto rounded-xl shadow-lg"
-                    />
-                    <p className="text-sm text-muted-foreground">Click to change image</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Click to upload or take photo</p>
-                      <p className="text-sm text-muted-foreground">PNG, JPG up to 10MB</p>
-                    </div>
-                  </div>
-                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
               </div>
 
               {/* Category Selection */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">Issue Category</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {(Object.keys(categoryLabels) as IssueCategory[]).map((cat) => (
                     <button
                       key={cat}
@@ -421,7 +485,7 @@ const ReportIssue = () => {
                       <div className={`${category === cat ? 'text-primary' : 'text-muted-foreground'}`}>
                         {categoryIcons[cat]}
                       </div>
-                      <span className={`text-sm font-medium ${category === cat ? 'text-primary' : ''}`}>
+                      <span className={`text-xs font-medium text-center ${category === cat ? 'text-primary' : ''}`}>
                         {categoryLabels[cat]}
                       </span>
                     </button>
@@ -429,34 +493,23 @@ const ReportIssue = () => {
                 </div>
               </div>
 
-              {/* Severity Selection */}
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Severity Level</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['low', 'medium', 'high'] as IssueSeverity[]).map((sev) => (
-                    <button
-                      key={sev}
-                      type="button"
-                      onClick={() => setSeverity(sev)}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        severity === sev
-                          ? sev === 'low'
-                            ? 'border-success bg-success/10 text-success'
-                            : sev === 'medium'
-                            ? 'border-warning bg-warning/10 text-warning'
-                            : 'border-destructive bg-destructive/10 text-destructive'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <span className="font-medium capitalize">{sev}</span>
-                    </button>
-                  ))}
+              {/* Others Description */}
+              {category === 'others' && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label className="text-base font-medium">Describe the Issue</Label>
+                  <Textarea
+                    placeholder="Please describe the issue in detail..."
+                    value={otherDescription}
+                    onChange={(e) => setOtherDescription(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
                 </div>
-              </div>
+              )}
 
               <Button
-                onClick={proceedToChat}
-                disabled={!imageFile || !category || !severity}
+                onClick={proceedToLocation}
+                disabled={!imageFile || !category || (category === 'others' && !otherDescription.trim())}
                 className="w-full h-12 text-lg font-semibold shadow-lg"
               >
                 Continue
@@ -496,54 +549,123 @@ const ReportIssue = () => {
           </Card>
         )}
 
-        {/* Chat Step */}
-        {step === 'chat' && (
+        {/* Location Step */}
+        {step === 'location' && (
           <Card className="shadow-xl">
             <CardHeader className="border-b">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-primary text-primary-foreground">
-                  <Bot className="h-6 w-6" />
+                  <MapPin className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle>Issue Details</CardTitle>
-                  <CardDescription>Tell us more about the issue</CardDescription>
+                  <CardTitle>Issue Location</CardTitle>
+                  <CardDescription>Provide the exact location of the issue</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6">
-              {/* Chat Messages */}
-              <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
-                {chatMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] p-4 rounded-2xl ${
-                        msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-muted rounded-bl-md'
-                      }`}
-                    >
-                      <p className="whitespace-pre-line text-sm">{msg.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Input */}
-              <div className="flex gap-3">
+            <CardContent className="pt-6 space-y-5">
+              {/* Building Name */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-primary" />
+                  Building Name
+                </Label>
                 <Input
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleChatSubmit()}
-                  placeholder="Type your response..."
+                  placeholder="e.g., Tech Park, Main Building, Hostel Block A"
+                  value={buildingName}
+                  onChange={(e) => setBuildingName(e.target.value)}
+                  onKeyDown={(e) => handleLocationKeyDown(e, 'building')}
+                  autoFocus={currentLocationField === 'building'}
                   className="h-12"
                 />
-                <Button onClick={handleChatSubmit} size="icon" className="h-12 w-12 shrink-0">
-                  <Send className="h-5 w-5" />
-                </Button>
               </div>
+
+              {/* Floor Number */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  Floor Number
+                </Label>
+                <Input
+                  placeholder="e.g., Ground Floor, 1st Floor, 2nd Floor"
+                  value={floorNumber}
+                  onChange={(e) => setFloorNumber(e.target.value)}
+                  onKeyDown={(e) => handleLocationKeyDown(e, 'floor')}
+                  autoFocus={currentLocationField === 'floor'}
+                  className="h-12"
+                />
+              </div>
+
+              {/* Room / Area */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <DoorOpen className="h-4 w-4 text-primary" />
+                  Room / Area Description
+                </Label>
+                <Input
+                  placeholder="e.g., Room 301, Near Elevator, Corridor, Washroom"
+                  value={roomArea}
+                  onChange={(e) => setRoomArea(e.target.value)}
+                  onKeyDown={(e) => handleLocationKeyDown(e, 'room')}
+                  autoFocus={currentLocationField === 'room'}
+                  className="h-12"
+                />
+              </div>
+
+              <Button
+                onClick={proceedToUrgency}
+                disabled={!buildingName.trim() || !floorNumber.trim() || !roomArea.trim()}
+                className="w-full h-12 text-lg font-semibold shadow-lg"
+              >
+                Continue
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Urgency Step */}
+        {step === 'urgency' && (
+          <Card className="shadow-xl">
+            <CardHeader className="border-b">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <CardTitle>Select Urgency Level</CardTitle>
+                  <CardDescription>How urgent is this issue?</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              {urgencyOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSelectedUrgency(option.value)}
+                  className={`w-full p-5 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
+                    selectedUrgency === option.value
+                      ? option.color
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className={`p-3 rounded-xl ${selectedUrgency === option.value ? 'bg-white/50' : 'bg-muted'}`}>
+                    {option.icon}
+                  </div>
+                  <div>
+                    <p className="font-semibold">{option.label}</p>
+                    <p className="text-sm opacity-80">{option.description}</p>
+                  </div>
+                </button>
+              ))}
+
+              <Button
+                onClick={proceedToSubmit}
+                disabled={!selectedUrgency}
+                className="w-full h-12 text-lg font-semibold shadow-lg mt-6"
+              >
+                Continue
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -578,25 +700,22 @@ const ReportIssue = () => {
                     <p className="font-medium">{category && categoryLabels[category]}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-xl">
-                    <p className="text-xs text-muted-foreground mb-1">Severity</p>
-                    <Badge className={
-                      severity === 'low' ? 'severity-badge-low' :
-                      severity === 'medium' ? 'severity-badge-medium' : 'severity-badge-high'
-                    }>
-                      {severity}
-                    </Badge>
+                    <p className="text-xs text-muted-foreground mb-1">Urgency</p>
+                    <p className="font-medium capitalize">{selectedUrgency.replace('_', ' ')}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-xl col-span-2">
                     <p className="text-xs text-muted-foreground mb-1">Location</p>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-primary" />
-                      <p className="font-medium">{location}</p>
+                      <p className="font-medium">{`${buildingName}, Floor ${floorNumber}, ${roomArea}`}</p>
                     </div>
                   </div>
-                  <div className="p-4 bg-muted/50 rounded-xl col-span-2">
-                    <p className="text-xs text-muted-foreground mb-1">Urgency</p>
-                    <p className="font-medium">{urgency}</p>
-                  </div>
+                  {category === 'others' && otherDescription && (
+                    <div className="p-4 bg-muted/50 rounded-xl col-span-2">
+                      <p className="text-xs text-muted-foreground mb-1">Description</p>
+                      <p className="font-medium">{otherDescription}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

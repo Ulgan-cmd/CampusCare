@@ -1,9 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Menu, X } from 'lucide-react';
+import { LogOut, User, Menu, X, Settings } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import srmLogo from '@/assets/srm-logo-new.png';
+import srmLogo from '@/assets/srm-logo.jpeg';
 
 export const Header = () => {
   const { user, role, signOut } = useAuth();
@@ -26,6 +26,7 @@ export const Header = () => {
       { href: '/dashboard', label: 'Dashboard' },
       { href: '/report', label: 'Report Issue' },
       { href: '/my-issues', label: 'My Issues' },
+      { href: '/profile', label: 'Profile' },
     ];
   };
 
@@ -55,7 +56,7 @@ export const Header = () => {
 
         <div className="flex items-center gap-4">
           {/* SRM Logo */}
-          <img src={srmLogo} alt="SRM Logo" className="h-10 w-auto hidden sm:block" />
+          <img src={srmLogo} alt="SRM Logo" className="h-10 w-10 rounded-full hidden sm:block" />
           
           {user && (
             <>
@@ -68,7 +69,7 @@ export const Header = () => {
               </div>
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="hidden sm:flex">
                 <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+                Log Out
               </Button>
             </>
           )}
@@ -91,7 +92,7 @@ export const Header = () => {
           <nav className="container py-4 space-y-2">
             {/* Mobile SRM Logo */}
             <div className="flex justify-center pb-4">
-              <img src={srmLogo} alt="SRM Logo" className="h-12 w-auto" />
+              <img src={srmLogo} alt="SRM Logo" className="h-12 w-12 rounded-full" />
             </div>
             {navLinks.map((link) => (
               <Link
@@ -111,7 +112,7 @@ export const Header = () => {
                 </div>
                 <Button variant="ghost" size="sm" onClick={handleSignOut} className="w-full justify-start">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
+                  Log Out
                 </Button>
               </div>
             )}

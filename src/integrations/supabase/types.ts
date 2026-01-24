@@ -24,6 +24,7 @@ export type Database = {
           id: string
           image_url: string | null
           location: string | null
+          resolved_image_url: string | null
           severity: Database["public"]["Enums"]["issue_severity"]
           status: Database["public"]["Enums"]["issue_status"] | null
           student_id: string
@@ -38,6 +39,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string | null
+          resolved_image_url?: string | null
           severity?: Database["public"]["Enums"]["issue_severity"]
           status?: Database["public"]["Enums"]["issue_status"] | null
           student_id: string
@@ -52,6 +54,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string | null
+          resolved_image_url?: string | null
           severity?: Database["public"]["Enums"]["issue_severity"]
           status?: Database["public"]["Enums"]["issue_status"] | null
           student_id?: string
@@ -63,28 +66,43 @@ export type Database = {
         Row: {
           badges: string[] | null
           created_at: string | null
+          degree: string | null
+          department: string | null
           email: string
           id: string
           name: string | null
+          phone_number: string | null
           points: number | null
+          profile_completed: boolean | null
+          registration_number: string | null
           student_id: string | null
         }
         Insert: {
           badges?: string[] | null
           created_at?: string | null
+          degree?: string | null
+          department?: string | null
           email: string
           id: string
           name?: string | null
+          phone_number?: string | null
           points?: number | null
+          profile_completed?: boolean | null
+          registration_number?: string | null
           student_id?: string | null
         }
         Update: {
           badges?: string[] | null
           created_at?: string | null
+          degree?: string | null
+          department?: string | null
           email?: string
           id?: string
           name?: string | null
+          phone_number?: string | null
           points?: number | null
+          profile_completed?: boolean | null
+          registration_number?: string | null
           student_id?: string | null
         }
         Relationships: []
@@ -136,6 +154,10 @@ export type Database = {
         | "furniture_damage"
         | "electrical_issue"
         | "others"
+        | "fire_safety"
+        | "civil_work"
+        | "air_emission"
+        | "water"
       issue_severity: "low" | "medium" | "high"
       issue_status: "submitted" | "in_progress" | "resolved"
     }
@@ -272,6 +294,10 @@ export const Constants = {
         "furniture_damage",
         "electrical_issue",
         "others",
+        "fire_safety",
+        "civil_work",
+        "air_emission",
+        "water",
       ],
       issue_severity: ["low", "medium", "high"],
       issue_status: ["submitted", "in_progress", "resolved"],

@@ -38,11 +38,15 @@ interface Issue {
   updated_at: string;
 }
 
-const categoryLabels: Record<IssueCategory, string> = {
-  water_leak: 'Water Leak',
+const categoryLabels: Record<string, string> = {
+  water_leak: 'Water',
+  water: 'Water',
   cleanliness: 'Cleanliness',
   furniture_damage: 'Furniture Damage',
   electrical_issue: 'Electrical Issue',
+  fire_safety: 'Fire Safety',
+  civil_work: 'Civil Work',
+  air_emission: 'Air Emission',
   others: 'Others',
 };
 
