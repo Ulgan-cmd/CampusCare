@@ -39,12 +39,16 @@ interface Issue {
 }
 
 const categoryLabels: Record<IssueCategory, string> = {
-  water_leak: 'Water Leak',
+  water_leak: 'Water',
+  water: 'Water',
   cleanliness: 'Cleanliness',
   furniture_damage: 'Furniture Damage',
   electrical_issue: 'Electrical Issue',
+  fire_safety: 'Fire Safety',
+  civil_work: 'Civil Work',
+  air_emission: 'Air Emission',
   others: 'Others',
-};
+} as Record<string, string>;
 
 const MaintenanceIncoming = () => {
   const navigate = useNavigate();
@@ -104,9 +108,8 @@ const MaintenanceIncoming = () => {
 
   const stats = {
     total: issues.length,
-    submitted: issues.filter(i => i.status === 'submitted').length,
     inProgress: issues.filter(i => i.status === 'in_progress').length,
-    highSeverity: issues.filter(i => i.severity === 'high' && i.status !== 'resolved').length,
+    resolved: issues.filter(i => i.status === 'resolved').length,
   };
 
   return (
@@ -127,7 +130,7 @@ const MaintenanceIncoming = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="bg-gradient-to-br from-muted/50 to-transparent border-border hover:shadow-lg transition-shadow group">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -137,19 +140,6 @@ const MaintenanceIncoming = () => {
                 </div>
                 <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/10 transition-colors">
                   <Inbox className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20 hover:shadow-lg transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">New Submissions</p>
-                  <p className="text-3xl font-bold text-primary mt-1">{stats.submitted}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Clock className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -167,15 +157,15 @@ const MaintenanceIncoming = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gradient-to-br from-destructive/10 to-transparent border-destructive/20 hover:shadow-lg transition-shadow">
+          <Card className="bg-gradient-to-br from-success/10 to-transparent border-success/20 hover:shadow-lg transition-shadow">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground font-medium">High Priority</p>
-                  <p className="text-3xl font-bold text-destructive mt-1">{stats.highSeverity}</p>
+                  <p className="text-sm text-muted-foreground font-medium">Resolved</p>
+                  <p className="text-3xl font-bold text-success mt-1">{stats.resolved}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-destructive/10">
-                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                <div className="p-3 rounded-xl bg-success/10">
+                  <Clock className="h-6 w-6 text-success" />
                 </div>
               </div>
             </CardContent>

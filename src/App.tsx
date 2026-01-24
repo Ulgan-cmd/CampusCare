@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
+import ProfileSetup from "./pages/ProfileSetup";
+import EditProfile from "./pages/EditProfile";
 import StudentDashboard from "./pages/StudentDashboard";
 import ReportIssue from "./pages/ReportIssue";
 import MyIssues from "./pages/MyIssues";
@@ -26,6 +28,13 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             
+            {/* Profile Setup Route */}
+            <Route path="/profile-setup" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ProfileSetup />
+              </ProtectedRoute>
+            } />
+            
             {/* Student Routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRoles={['student']}>
@@ -40,6 +49,11 @@ const App = () => (
             <Route path="/my-issues" element={
               <ProtectedRoute allowedRoles={['student']}>
                 <MyIssues />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <EditProfile />
               </ProtectedRoute>
             } />
 
