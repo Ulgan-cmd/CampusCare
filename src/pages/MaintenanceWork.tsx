@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { generateIssuePDF, getReportFileName } from '@/lib/generateIssuePDF';
 import { 
   Wrench, 
   CheckCircle, 
@@ -26,7 +28,8 @@ import {
   Image as ImageIcon,
   Mail,
   GraduationCap,
-  Hash
+  Hash,
+  Download
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -72,6 +75,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const MaintenanceWork = () => {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const issueId = searchParams.get('issue');
   const navigate = useNavigate();
@@ -88,6 +92,7 @@ const MaintenanceWork = () => {
   const [resolvedImageFile, setResolvedImageFile] = useState<File | null>(null);
   const [resolvedImagePreview, setResolvedImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   // Fetch student profile when issue is selected
   const fetchStudentProfile = async (studentId: string) => {
@@ -256,6 +261,92 @@ const MaintenanceWork = () => {
     }
   };
 
+  // Download issue report as PDF
+  const handleDownloadReport = async () => {
+    if (!selectedIssue || !studentProfile || !user) {
+      toast.error('Issue or profile data not available');
+      return;
+    }
+
+    setDownloadingReport(true);
+
+    try {
+      // Fetch phone number for the student profile
+      const { data: fullProfile } = await supabase
+        .from('profiles')
+        .select('phone_number')
+        .eq('id', selectedIssue.student_id)
+        .single();
+
+      // Generate PDF
+      const pdfBlob = await generateIssuePDF(
+        {
+          ...studentProfile,
+          phone_number: fullProfile?.phone_number || null,
+        },
+        {
+          id: selectedIssue.id,
+          category: selectedIssue.category,
+          description: selectedIssue.description,
+          severity: selectedIssue.severity,
+          created_at: selectedIssue.created_at,
+          location: selectedIssue.location,
+          status: selectedIssue.status,
+          updated_at: selectedIssue.updated_at,
+          image_url: selectedIssue.image_url,
+          resolved_image_url: selectedIssue.resolved_image_url,
+        }
+      );
+
+      const fileName = getReportFileName(selectedIssue.id);
+      const filePath = `${user.id}/${selectedIssue.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('issue-reports')
+        .upload(filePath, pdfBlob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('issue-reports')
+        .getPublicUrl(filePath);
+
+      // Save to downloaded_reports table
+      const { error: dbError } = await supabase
+        .from('downloaded_reports')
+        .insert({
+          user_id: user.id,
+          issue_id: selectedIssue.id,
+          issue_category: selectedIssue.category,
+          location: selectedIssue.location,
+          issue_status: selectedIssue.status,
+          file_url: urlData.publicUrl,
+          file_name: fileName,
+        });
+
+      if (dbError) throw dbError;
+
+      // Download the file
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Report downloaded and saved to My Works!');
+    } catch (err) {
+      console.error('Error generating report:', err);
+      toast.error('Failed to generate report');
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   const activeIssues = issues.filter(i => i.status !== 'resolved');
 
   return (
@@ -411,6 +502,29 @@ const MaintenanceWork = () => {
                               <p className="font-medium text-sm">{studentProfile.degree || ''} {studentProfile.department ? `/ ${studentProfile.department}` : ''}</p>
                             </div>
                           </div>
+                        </div>
+                        
+                        {/* Download Report Button */}
+                        <div className="flex justify-end pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleDownloadReport}
+                            disabled={downloadingReport}
+                            className="gap-2"
+                          >
+                            {downloadingReport ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-4 w-4" />
+                                Download Report
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     )}

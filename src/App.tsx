@@ -11,6 +11,7 @@ import EditProfile from "./pages/EditProfile";
 import StudentDashboard from "./pages/StudentDashboard";
 import ReportIssue from "./pages/ReportIssue";
 import MyIssues from "./pages/MyIssues";
+import MyWorks from "./pages/MyWorks";
 import MaintenanceIncoming from "./pages/MaintenanceIncoming";
 import MaintenanceWork from "./pages/MaintenanceWork";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,11 @@ const App = () => (
             <Route path="/profile" element={
               <ProtectedRoute allowedRoles={['student']}>
                 <EditProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-works" element={
+              <ProtectedRoute allowedRoles={['student', 'maintenance']}>
+                <MyWorks />
               </ProtectedRoute>
             } />
 

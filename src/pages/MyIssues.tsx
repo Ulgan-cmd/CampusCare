@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { generateIssuePDF, getReportFileName } from '@/lib/generateIssuePDF';
 import { 
   FileText, 
   Clock, 
@@ -15,7 +17,8 @@ import {
   ArrowRight,
   Plus,
   MessageSquare,
-  ImageIcon
+  ImageIcon,
+  Download
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -78,6 +81,29 @@ const MyIssues = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<IssueStatus | 'all'>('all');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{
+    name: string | null;
+    registration_number: string | null;
+    degree: string | null;
+    department: string | null;
+    email: string;
+    phone_number: string | null;
+  } | null>(null);
+
+  // Fetch user profile for PDF generation
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('name, registration_number, degree, department, email, phone_number')
+        .eq('id', user.id)
+        .single();
+      if (data) setProfile(data);
+    };
+    fetchProfile();
+  }, [user]);
 
   useEffect(() => {
     const fetchIssues = async () => {
@@ -171,6 +197,79 @@ const MyIssues = () => {
       case 'in_progress': return 2;
       case 'resolved': return 3;
       default: return 0;
+    }
+  };
+
+  // Download issue report as PDF
+  const handleDownloadReport = async (issue: Issue) => {
+    if (!profile || !user) {
+      toast.error('Profile not loaded');
+      return;
+    }
+
+    setDownloadingId(issue.id);
+
+    try {
+      // Generate PDF
+      const pdfBlob = await generateIssuePDF(profile, {
+        id: issue.id,
+        category: issue.category,
+        description: issue.description,
+        severity: issue.severity,
+        created_at: issue.created_at,
+        location: issue.location,
+        status: issue.status,
+        updated_at: issue.updated_at,
+        image_url: issue.image_url,
+        resolved_image_url: issue.resolved_image_url,
+      });
+
+      const fileName = getReportFileName(issue.id);
+      const filePath = `${user.id}/${issue.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('issue-reports')
+        .upload(filePath, pdfBlob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('issue-reports')
+        .getPublicUrl(filePath);
+
+      // Save to downloaded_reports table
+      const { error: dbError } = await supabase
+        .from('downloaded_reports')
+        .insert({
+          user_id: user.id,
+          issue_id: issue.id,
+          issue_category: issue.category,
+          location: issue.location,
+          issue_status: issue.status,
+          file_url: urlData.publicUrl,
+          file_name: fileName,
+        });
+
+      if (dbError) throw dbError;
+
+      // Download the file
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Report downloaded and saved to My Works!');
+    } catch (err) {
+      console.error('Error generating report:', err);
+      toast.error('Failed to generate report');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -383,6 +482,29 @@ const MyIssues = () => {
                             <span className={statusStep >= 2 ? 'text-primary font-medium' : ''}>In Progress</span>
                             <span className={statusStep >= 3 ? 'text-primary font-medium' : ''}>Resolved</span>
                           </div>
+                        </div>
+
+                        {/* Download Report Button */}
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDownloadReport(issue)}
+                            disabled={downloadingId === issue.id}
+                            className="gap-2"
+                          >
+                            {downloadingId === issue.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-4 w-4" />
+                                Download Report
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>

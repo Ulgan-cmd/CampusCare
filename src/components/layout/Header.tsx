@@ -20,6 +20,7 @@ export const Header = () => {
       return [
         { href: '/maintenance/incoming', label: 'Incoming Issues' },
         { href: '/maintenance/work', label: 'Work & Resolution' },
+        { href: '/my-works', label: 'My Works' },
       ];
     }
     return [
@@ -27,6 +28,7 @@ export const Header = () => {
       { href: '/report', label: 'Report Issue' },
       { href: '/my-issues', label: 'My Issues' },
       { href: '/profile', label: 'Profile' },
+      { href: '/my-works', label: 'My Works' },
     ];
   };
 
