@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      downloaded_reports: {
+        Row: {
+          downloaded_at: string
+          file_name: string
+          file_url: string
+          id: string
+          issue_category: string
+          issue_id: string
+          issue_status: string
+          location: string | null
+          user_id: string
+        }
+        Insert: {
+          downloaded_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          issue_category: string
+          issue_id: string
+          issue_status: string
+          location?: string | null
+          user_id: string
+        }
+        Update: {
+          downloaded_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          issue_category?: string
+          issue_id?: string
+          issue_status?: string
+          location?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "downloaded_reports_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issues: {
         Row: {
           admin_comments: string | null
