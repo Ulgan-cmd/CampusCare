@@ -84,9 +84,9 @@ const categoryIcons: Record<IssueCategory, React.ReactNode> = {
 };
 
 const urgencyOptions = [
-  { value: 'can_wait', label: 'Can Wait', description: 'Minor issue, not affecting daily activities', icon: <Clock className="h-5 w-5" />, color: 'border-success bg-success/10 text-success' },
-  { value: 'needs_attention', label: 'Needs Attention', description: 'Should be fixed soon', icon: <AlertTriangle className="h-5 w-5" />, color: 'border-warning bg-warning/10 text-warning' },
-  { value: 'emergency', label: 'Emergency', description: 'Requires immediate action', icon: <AlertOctagon className="h-5 w-5" />, color: 'border-destructive bg-destructive/10 text-destructive' },
+  { value: 'can_wait', label: 'Can Wait', description: 'Minor issue, not affecting daily activities', icon: <Clock className="h-5 w-5" />, severity: 'low' as const },
+  { value: 'needs_attention', label: 'Needs Attention', description: 'Should be fixed soon', icon: <AlertTriangle className="h-5 w-5" />, severity: 'medium' as const },
+  { value: 'emergency', label: 'Emergency', description: 'Requires immediate action', icon: <AlertOctagon className="h-5 w-5" />, severity: 'high' as const },
 ];
 
 // Clean AI text - remove asterisks and format properly
@@ -638,26 +638,37 @@ const ReportIssue = () => {
               </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
-              {urgencyOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setSelectedUrgency(option.value)}
-                  className={`w-full p-5 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
-                    selectedUrgency === option.value
-                      ? option.color
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <div className={`p-3 rounded-xl ${selectedUrgency === option.value ? 'bg-white/50' : 'bg-muted'}`}>
-                    {option.icon}
+              {urgencyOptions.map((option) => {
+                const isSelected = selectedUrgency === option.value;
+                const colorClasses = {
+                  low: isSelected ? 'border-[hsl(142,76%,36%)] bg-[hsl(142,76%,36%,0.1)] text-[hsl(142,76%,36%)]' : '',
+                  medium: isSelected ? 'border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%,0.1)] text-[hsl(38,92%,50%)]' : '',
+                  high: isSelected ? 'border-[hsl(0,84%,60%)] bg-[hsl(0,84%,60%,0.1)] text-[hsl(0,84%,60%)]' : '',
+                };
+                
+                return (
+                  <div
+                    key={option.value}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedUrgency(option.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedUrgency(option.value); }}
+                    className={`w-full p-5 rounded-xl border-2 transition-all flex items-center gap-4 text-left cursor-pointer select-none ${
+                      isSelected
+                        ? colorClasses[option.severity]
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className={`p-3 rounded-xl ${isSelected ? 'bg-white/50' : 'bg-muted'}`}>
+                      {option.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold">{option.label}</p>
+                      <p className="text-sm opacity-80">{option.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold">{option.label}</p>
-                    <p className="text-sm opacity-80">{option.description}</p>
-                  </div>
-                </button>
-              ))}
+                );
+              })}
 
               <Button
                 onClick={proceedToSubmit}

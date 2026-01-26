@@ -10,12 +10,12 @@ import {
   Clock, 
   CheckCircle, 
   Loader2, 
-  AlertTriangle,
   MapPin,
   Calendar,
   ArrowRight,
   Plus,
-  MessageSquare
+  MessageSquare,
+  ImageIcon
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ type IssueCategory = 'water_leak' | 'cleanliness' | 'furniture_damage' | 'electr
 interface Issue {
   id: string;
   image_url: string | null;
+  resolved_image_url: string | null;
   category: IssueCategory;
   severity: IssueSeverity;
   confidence: number | null;
@@ -323,6 +324,21 @@ const MyIssues = () => {
                               Maintenance Response
                             </div>
                             <p className="text-sm">{issue.admin_comments}</p>
+                          </div>
+                        )}
+
+                        {/* Show resolved image when status is resolved */}
+                        {issue.status === 'resolved' && issue.resolved_image_url && (
+                          <div className="mt-4 p-3 bg-[hsl(142,76%,36%,0.05)] rounded-xl border border-[hsl(142,76%,36%,0.2)]">
+                            <div className="flex items-center gap-2 text-xs font-medium text-[hsl(142,76%,36%)] mb-2">
+                              <ImageIcon className="h-3 w-3" />
+                              Resolution Proof
+                            </div>
+                            <img
+                              src={issue.resolved_image_url}
+                              alt="Resolved issue proof"
+                              className="w-full max-h-40 object-cover rounded-lg"
+                            />
                           </div>
                         )}
 
