@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import srmLogo from '@/assets/srm-logo-new.png';
 
 interface StudentDetails {
   name: string | null;
@@ -43,13 +44,13 @@ const severityLabels: Record<string, string> = {
 
 // Parse location string into structured parts
 const parseLocation = (location: string | null): { building: string; floor: string; room: string } => {
-  if (!location) return { building: 'Not specified', floor: 'Not specified', room: 'Not specified' };
+  if (!location) return { building: '', floor: '', room: '' };
   
   const parts = location.split(',').map(p => p.trim());
   return {
-    building: parts[0] || 'Not specified',
-    floor: parts[1] || 'Not specified',
-    room: parts[2] || 'Not specified',
+    building: parts[0] || '',
+    floor: parts[1] || '',
+    room: parts[2] || '',
   };
 };
 
@@ -70,6 +71,23 @@ const loadImageAsBase64 = async (url: string): Promise<string | null> => {
   }
 };
 
+// Load local asset as base64
+const loadAssetAsBase64 = async (assetPath: string): Promise<string | null> => {
+  try {
+    const response = await fetch(assetPath);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error loading asset:', error);
+    return null;
+  }
+};
+
 export const generateIssuePDF = async (
   student: StudentDetails,
   issue: IssueDetails
@@ -79,267 +97,233 @@ export const generateIssuePDF = async (
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
   
-  // Colors
-  const primaryColor: [number, number, number] = [59, 130, 246]; // Blue
-  const textColor: [number, number, number] = [31, 41, 55]; // Dark gray
-  const lightGray: [number, number, number] = [156, 163, 175];
-  const tableHeaderBg: [number, number, number] = [243, 244, 246];
+  // Colors matching template
+  const textColor: [number, number, number] = [0, 0, 0];
+  const grayText: [number, number, number] = [100, 100, 100];
   
   let yPos = margin;
 
-  // Helper function to add text
-  const addText = (text: string, x: number, y: number, options?: { 
-    fontSize?: number; 
-    fontStyle?: 'normal' | 'bold'; 
-    color?: [number, number, number];
-    align?: 'left' | 'center' | 'right';
-  }) => {
-    const { fontSize = 10, fontStyle = 'normal', color = textColor, align = 'left' } = options || {};
-    doc.setFontSize(fontSize);
-    doc.setFont('helvetica', fontStyle);
-    doc.setTextColor(...color);
-    
-    let xPos = x;
-    if (align === 'center') {
-      xPos = pageWidth / 2;
-    } else if (align === 'right') {
-      xPos = pageWidth - margin;
-    }
-    
-    doc.text(text, xPos, y, { align });
-    return y;
-  };
-
-  // Helper to draw table row
-  const drawTableRow = (label: string, value: string, y: number, isHeader = false): number => {
-    const rowHeight = 10;
-    const labelWidth = 60;
-    
-    // Background for header
-    if (isHeader) {
-      doc.setFillColor(...tableHeaderBg);
-      doc.rect(margin, y - 6, contentWidth, rowHeight, 'F');
-    }
-    
-    // Border
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(margin, y - 6, labelWidth, rowHeight);
-    doc.rect(margin + labelWidth, y - 6, contentWidth - labelWidth, rowHeight);
-    
-    // Text
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...textColor);
-    doc.text(label, margin + 3, y);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(value || '', margin + labelWidth + 3, y);
-    
-    return y + rowHeight;
-  };
+  // Load SRM logo
+  const logoBase64 = await loadAssetAsBase64(srmLogo);
 
   // ===== PAGE 1 =====
   
-  // Header - Campus Care title
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  // Title - Campus Care – Issue Report (left aligned, bold)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(...textColor);
+  doc.text('Campus Care – Issue Report', margin, yPos + 10);
   
-  addText('Campus Care – Issue Report', 0, 15, { 
-    fontSize: 20, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255],
-    align: 'center' 
-  });
-  
-  addText('SRM Institute of Science and Technology', 0, 25, { 
-    fontSize: 11, 
-    color: [255, 255, 255],
-    align: 'center' 
-  });
+  // SRM Logo (top right)
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', pageWidth - margin - 45, yPos - 5, 45, 25);
+  }
   
   yPos = 45;
   
   // Subtitle
-  addText('Campus Care – Digital Issue Reporting System', 0, yPos, { 
-    fontSize: 12, 
-    fontStyle: 'bold',
-    align: 'center' 
-  });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('SRM Institute of Science and Technology', margin, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Campus Care – Digital Issue Reporting System', margin, yPos);
   
-  yPos = 60;
+  yPos += 18;
+  
+  // Helper to draw section header (italic, bold)
+  const drawSectionHeader = (title: string, y: number): number => {
+    doc.setFont('helvetica', 'bolditalic');
+    doc.setFontSize(12);
+    doc.setTextColor(...textColor);
+    doc.text(title, margin, y);
+    return y + 8;
+  };
+  
+  // Helper to draw table row (matching template style)
+  const drawTableRow = (label: string, value: string, y: number, isFirst: boolean, isLast: boolean): number => {
+    const rowHeight = 9;
+    const labelWidth = 55;
+    
+    // Draw cell borders
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    
+    // Left cell
+    doc.rect(margin, y, labelWidth, rowHeight);
+    // Right cell
+    doc.rect(margin + labelWidth, y, contentWidth - labelWidth, rowHeight);
+    
+    // Text
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...textColor);
+    doc.text(label, margin + 3, y + 6);
+    doc.text(value || '', margin + labelWidth + 3, y + 6);
+    
+    return y + rowHeight;
+  };
   
   // Student Details Section
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPos, contentWidth, 8, 'F');
-  addText('Student Details', margin + 3, yPos + 5.5, { 
-    fontSize: 11, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255] 
-  });
-  yPos += 14;
+  yPos = drawSectionHeader('Student Details', yPos);
   
-  yPos = drawTableRow('Student Name', student.name || 'Not provided', yPos);
-  yPos = drawTableRow('Registration Number', student.registration_number || 'Not provided', yPos);
-  yPos = drawTableRow('Degree / Department', `${student.degree || 'N/A'} / ${student.department || 'N/A'}`, yPos);
-  yPos = drawTableRow('Email ID', student.email, yPos);
-  yPos = drawTableRow('Phone Number', student.phone_number || 'Not provided', yPos);
+  yPos = drawTableRow('Student Name', student.name || '', yPos, true, false);
+  yPos = drawTableRow('Registration Number', student.registration_number || '', yPos, false, false);
+  yPos = drawTableRow('Degree / Department', `${student.degree || ''} / ${student.department || ''}`, yPos, false, false);
+  yPos = drawTableRow('Email ID', student.email, yPos, false, false);
+  yPos = drawTableRow('Phone Number', student.phone_number || '', yPos, false, true);
   
-  yPos += 10;
+  yPos += 15;
   
   // Issue Details Section
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPos, contentWidth, 8, 'F');
-  addText('Issue Details', margin + 3, yPos + 5.5, { 
-    fontSize: 11, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255] 
-  });
-  yPos += 14;
+  yPos = drawSectionHeader('Issue Details', yPos);
   
-  yPos = drawTableRow('Issue Category', categoryLabels[issue.category] || issue.category, yPos);
-  yPos = drawTableRow('Issue Description', issue.description || 'Not provided', yPos);
-  yPos = drawTableRow('Urgency / Severity', severityLabels[issue.severity] || issue.severity, yPos);
-  yPos = drawTableRow('Date & Time Reported', format(new Date(issue.created_at), 'PPpp'), yPos);
+  yPos = drawTableRow('Issue Category', categoryLabels[issue.category] || issue.category, yPos, true, false);
+  yPos = drawTableRow('Issue Description', issue.description || '', yPos, false, false);
+  yPos = drawTableRow('Urgency /Severity', severityLabels[issue.severity] || issue.severity, yPos, false, false);
+  yPos = drawTableRow('Date Reported', format(new Date(issue.created_at), 'PPP'), yPos, false, true);
   
-  yPos += 10;
+  yPos += 15;
   
   // Location Information Section
   const locationParts = parseLocation(issue.location);
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPos, contentWidth, 8, 'F');
-  addText('Location Information', margin + 3, yPos + 5.5, { 
-    fontSize: 11, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255] 
-  });
-  yPos += 14;
+  yPos = drawSectionHeader('Location Information', yPos);
   
-  yPos = drawTableRow('Building Name', locationParts.building, yPos);
-  yPos = drawTableRow('Floor Number', locationParts.floor, yPos);
-  yPos = drawTableRow('Room / Area Description', locationParts.room, yPos);
+  yPos = drawTableRow('Building Name', locationParts.building, yPos, true, false);
+  yPos = drawTableRow('Floor Number', locationParts.floor, yPos, false, false);
+  yPos = drawTableRow('Room / Area Description', locationParts.room, yPos, false, true);
   
-  yPos += 10;
+  yPos += 15;
   
   // Issue Status Section
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPos, contentWidth, 8, 'F');
-  addText('Issue Status', margin + 3, yPos + 5.5, { 
-    fontSize: 11, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255] 
-  });
-  yPos += 14;
+  yPos = drawSectionHeader('Issue Status', yPos);
   
   const statusLabel = issue.status === 'resolved' ? 'Resolved' : 
                       issue.status === 'in_progress' ? 'In Progress' : 'Submitted';
-  yPos = drawTableRow('Current Status', statusLabel, yPos);
+  yPos = drawTableRow('Current Status', statusLabel, yPos, true, false);
   
   const resolvedDate = issue.status === 'resolved' && issue.updated_at 
-    ? format(new Date(issue.updated_at), 'PPpp') 
-    : 'N/A';
-  yPos = drawTableRow('Date & Time Resolved', resolvedDate, yPos);
+    ? format(new Date(issue.updated_at), 'PPP') 
+    : '';
+  yPos = drawTableRow('Date Resolved', resolvedDate, yPos, false, true);
   
   // ===== PAGE 2 - Images =====
   doc.addPage();
   yPos = margin;
   
-  // Header for page 2
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, 20, 'F');
-  addText('Image Evidence', 0, 13, { 
-    fontSize: 16, 
-    fontStyle: 'bold', 
-    color: [255, 255, 255],
-    align: 'center' 
-  });
+  // Image Evidence header (italic, bold)
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(14);
+  doc.setTextColor(...textColor);
+  doc.text('Image Evidence', margin, yPos);
   
-  yPos = 35;
+  yPos += 12;
   
-  // Before Resolution Section
-  addText('Before Resolution:', margin, yPos, { fontSize: 12, fontStyle: 'bold' });
+  // Before Resolution label
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text('Before Resolution:', margin, yPos);
   yPos += 8;
   
-  const imageHeight = 80;
-  const imageWidth = contentWidth;
+  const imageHeight = 75;
+  const imageWidth = contentWidth - 20;
+  const imageX = margin + 10;
   
-  // Draw border for before image
-  doc.setDrawColor(200, 200, 200);
-  doc.rect(margin, yPos, imageWidth, imageHeight);
+  // Before image area (black background, sharp corners)
+  doc.setFillColor(0, 0, 0);
+  doc.rect(imageX, yPos, imageWidth, imageHeight, 'F');
   
   if (issue.image_url) {
     try {
       const beforeImageBase64 = await loadImageAsBase64(issue.image_url);
       if (beforeImageBase64) {
-        doc.addImage(beforeImageBase64, 'JPEG', margin + 2, yPos + 2, imageWidth - 4, imageHeight - 4);
+        // Calculate dimensions to maintain aspect ratio
+        doc.addImage(beforeImageBase64, 'JPEG', imageX + 2, yPos + 2, imageWidth - 4, imageHeight - 4);
       } else {
-        addText('Image could not be loaded', margin + imageWidth / 2 - 25, yPos + imageHeight / 2, { 
-          fontSize: 10, 
-          color: lightGray 
-        });
+        // Centered placeholder text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        const text = 'Students Uploaded Photo should be printed here.';
+        const textWidth = doc.getTextWidth(text);
+        doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + imageHeight / 2);
       }
     } catch {
-      addText('Image could not be loaded', margin + imageWidth / 2 - 25, yPos + imageHeight / 2, { 
-        fontSize: 10, 
-        color: lightGray 
-      });
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      const text = 'Students Uploaded Photo should be printed here.';
+      const textWidth = doc.getTextWidth(text);
+      doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + imageHeight / 2);
     }
   } else {
-    addText('No image uploaded', margin + imageWidth / 2 - 20, yPos + imageHeight / 2, { 
-      fontSize: 10, 
-      color: lightGray 
-    });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    const text = 'Students Uploaded Photo should be printed here.';
+    const textWidth = doc.getTextWidth(text);
+    doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + imageHeight / 2);
   }
   
   yPos += imageHeight + 15;
   
-  // After Resolution Section
-  addText('After Resolution:', margin, yPos, { fontSize: 12, fontStyle: 'bold' });
-  yPos += 8;
+  // After Resolution label
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...textColor);
+  doc.text('After Resolution:', margin, yPos);
+  yPos += 10;
   
-  // Draw darker border/background for after image
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, yPos, imageWidth, imageHeight, 'F');
-  doc.setDrawColor(180, 180, 180);
-  doc.rect(margin, yPos, imageWidth, imageHeight);
+  // After image area (dark gray background with rounded corners)
+  const afterImageHeight = 80;
+  const cornerRadius = 10;
+  
+  // Draw rounded rectangle
+  doc.setFillColor(50, 50, 50);
+  
+  // Using a custom rounded rect approach
+  const drawRoundedRect = (x: number, y: number, w: number, h: number, r: number) => {
+    doc.setFillColor(50, 50, 50);
+    // Main rectangle
+    doc.roundedRect(x, y, w, h, r, r, 'F');
+  };
+  
+  drawRoundedRect(imageX, yPos, imageWidth, afterImageHeight, cornerRadius);
   
   if (issue.status === 'resolved' && issue.resolved_image_url) {
     try {
       const afterImageBase64 = await loadImageAsBase64(issue.resolved_image_url);
       if (afterImageBase64) {
-        doc.addImage(afterImageBase64, 'JPEG', margin + 2, yPos + 2, imageWidth - 4, imageHeight - 4);
+        // Add image within the rounded area
+        doc.addImage(afterImageBase64, 'JPEG', imageX + 5, yPos + 5, imageWidth - 10, afterImageHeight - 10);
       } else {
-        addText('Image could not be loaded', margin + imageWidth / 2 - 25, yPos + imageHeight / 2, { 
-          fontSize: 10, 
-          color: lightGray 
-        });
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        const text = 'Maintenance Uploaded Photo should be printed here';
+        const textWidth = doc.getTextWidth(text);
+        doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + afterImageHeight / 2);
       }
     } catch {
-      addText('Image could not be loaded', margin + imageWidth / 2 - 25, yPos + imageHeight / 2, { 
-        fontSize: 10, 
-        color: lightGray 
-      });
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      const text = 'Maintenance Uploaded Photo should be printed here';
+      const textWidth = doc.getTextWidth(text);
+      doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + afterImageHeight / 2);
     }
   } else {
-    addText('Not Available', margin + imageWidth / 2 - 15, yPos + imageHeight / 2, { 
-      fontSize: 11, 
-      fontStyle: 'bold',
-      color: lightGray 
-    });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    const text = issue.status === 'resolved' ? 'Maintenance Uploaded Photo should be printed here' : 'Not Available';
+    const textWidth = doc.getTextWidth(text);
+    doc.text(text, imageX + (imageWidth - textWidth) / 2, yPos + afterImageHeight / 2);
   }
   
-  yPos += imageHeight + 20;
+  yPos += afterImageHeight + 25;
   
   // Footer
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 8;
-  
-  const currentDate = format(new Date(), 'PPpp');
-  addText(`Generated via Campus Care | Date: ${currentDate}`, 0, yPos, { 
-    fontSize: 9, 
-    color: lightGray,
-    align: 'center' 
-  });
+  const currentDate = format(new Date(), 'PPP');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...grayText);
+  doc.text(`Generated via Campus Care | Date: ${currentDate}`, margin, yPos);
   
   // Return as blob
   return doc.output('blob');
