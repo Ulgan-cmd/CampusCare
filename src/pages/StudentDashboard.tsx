@@ -15,13 +15,68 @@ import {
   FileText,
   Camera,
   ArrowRight,
+  Download,
+  Award,
 } from 'lucide-react';
+
+// Import badge images
+import badgeBronze from '@/assets/badge-bronze.jpeg';
+import badgeSilver from '@/assets/badge-silver.jpeg';
+import badgeGold from '@/assets/badge-gold.jpeg';
 
 interface Stats {
   submitted: number;
   resolved: number;
   points: number;
 }
+
+interface BadgeInfo {
+  name: string;
+  tier: 'bronze' | 'silver' | 'gold';
+  image: string;
+  minPoints: number;
+  color: string;
+}
+
+const getBadgeForPoints = (points: number): BadgeInfo | null => {
+  if (points >= 1000) {
+    return {
+      name: 'Elite',
+      tier: 'gold',
+      image: badgeGold,
+      minPoints: 1000,
+      color: 'from-yellow-500 to-yellow-600',
+    };
+  } else if (points >= 500) {
+    return {
+      name: 'Prime',
+      tier: 'silver',
+      image: badgeSilver,
+      minPoints: 500,
+      color: 'from-gray-400 to-gray-500',
+    };
+  } else if (points >= 200) {
+    return {
+      name: 'Verified',
+      tier: 'bronze',
+      image: badgeBronze,
+      minPoints: 200,
+      color: 'from-orange-600 to-orange-700',
+    };
+  }
+  return null;
+};
+
+const getNextBadge = (points: number): { name: string; pointsNeeded: number } | null => {
+  if (points < 200) {
+    return { name: 'Verified (Bronze)', pointsNeeded: 200 - points };
+  } else if (points < 500) {
+    return { name: 'Prime (Silver)', pointsNeeded: 500 - points };
+  } else if (points < 1000) {
+    return { name: 'Elite (Gold)', pointsNeeded: 1000 - points };
+  }
+  return null;
+};
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -70,6 +125,19 @@ const StudentDashboard = () => {
   }, [user]);
 
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
+  const currentBadge = getBadgeForPoints(stats.points);
+  const nextBadge = getNextBadge(stats.points);
+
+  const handleDownloadBadge = () => {
+    if (currentBadge) {
+      const link = document.createElement('a');
+      link.href = currentBadge.image;
+      link.download = `CampusCare_${currentBadge.name}_Badge.jpeg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -139,6 +207,79 @@ const StudentDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Badge Section */}
+        <Card className="border-border shadow-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/30">
+            <div className="flex items-center gap-3">
+              <Award className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle>Your Badge Status</CardTitle>
+                <CardDescription>Earn badges by accumulating points through reporting</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {currentBadge ? (
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="relative">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${currentBadge.color} rounded-full blur-xl opacity-30`} />
+                  <img 
+                    src={currentBadge.image} 
+                    alt={`${currentBadge.name} Badge`}
+                    className="relative w-32 h-32 object-cover rounded-full border-4 border-background shadow-xl"
+                  />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl font-bold">{currentBadge.name} Badge</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Congratulations! You've earned the {currentBadge.tier} tier badge.
+                  </p>
+                  {nextBadge && (
+                    <p className="text-sm text-primary mt-2">
+                      <TrendingUp className="inline h-4 w-4 mr-1" />
+                      {nextBadge.pointsNeeded} more points to unlock {nextBadge.name}
+                    </p>
+                  )}
+                  <Button 
+                    onClick={handleDownloadBadge} 
+                    className="mt-4 gap-2"
+                    variant="outline"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Badge
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="flex justify-center gap-4 mb-6">
+                  <div className="opacity-40">
+                    <img src={badgeBronze} alt="Bronze Badge" className="w-20 h-20 object-cover rounded-full grayscale" />
+                    <p className="text-xs mt-2">200 pts</p>
+                  </div>
+                  <div className="opacity-40">
+                    <img src={badgeSilver} alt="Silver Badge" className="w-20 h-20 object-cover rounded-full grayscale" />
+                    <p className="text-xs mt-2">500 pts</p>
+                  </div>
+                  <div className="opacity-40">
+                    <img src={badgeGold} alt="Gold Badge" className="w-20 h-20 object-cover rounded-full grayscale" />
+                    <p className="text-xs mt-2">1000 pts</p>
+                  </div>
+                </div>
+                <p className="text-muted-foreground">
+                  Keep reporting issues to earn your first badge!
+                </p>
+                {nextBadge && (
+                  <p className="text-sm text-primary mt-2">
+                    <TrendingUp className="inline h-4 w-4 mr-1" />
+                    {nextBadge.pointsNeeded} more points to unlock {nextBadge.name}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <div className="grid gap-6 md:grid-cols-2">
