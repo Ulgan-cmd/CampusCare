@@ -20,15 +20,10 @@ import {
   XCircle,
   ShieldCheck,
   Droplets,
-  Sparkles,
-  Armchair,
-  Zap,
-  HelpCircle,
+  Wind,
+  Trash2,
   MapPin,
   Image as ImageIcon,
-  Flame,
-  HardHat,
-  Wind,
   FolderOpen,
   Building,
   Layers,
@@ -38,15 +33,7 @@ import {
   AlertOctagon,
 } from 'lucide-react';
 
-type IssueCategory =
-  | 'water'
-  | 'cleanliness'
-  | 'furniture_damage'
-  | 'electrical_issue'
-  | 'fire_safety'
-  | 'civil_work'
-  | 'air_emission'
-  | 'others';
+type IssueCategory = 'air' | 'water' | 'waste';
 
 type IssueSeverity = 'low' | 'medium' | 'high';
 
@@ -61,26 +48,30 @@ interface ValidationResult {
   confidence: number;
 }
 
+// Subcategories for each main category
+const categorySubcategories: Record<IssueCategory, string[]> = {
+  air: ['Emission', 'Odour'],
+  water: ['Leak', 'Stagnation', 'Quality', 'Drainage'],
+  waste: ['Spillage'],
+};
+
 const categoryLabels: Record<IssueCategory, string> = {
+  air: 'Air',
   water: 'Water',
-  cleanliness: 'Cleanliness',
-  furniture_damage: 'Furniture Damage',
-  electrical_issue: 'Electrical Issue',
-  fire_safety: 'Fire Safety',
-  civil_work: 'Civil Work',
-  air_emission: 'Air Emission',
-  others: 'Others',
+  waste: 'Waste',
 };
 
 const categoryIcons: Record<IssueCategory, React.ReactNode> = {
+  air: <Wind className="h-5 w-5" />,
   water: <Droplets className="h-5 w-5" />,
-  cleanliness: <Sparkles className="h-5 w-5" />,
-  furniture_damage: <Armchair className="h-5 w-5" />,
-  electrical_issue: <Zap className="h-5 w-5" />,
-  fire_safety: <Flame className="h-5 w-5" />,
-  civil_work: <HardHat className="h-5 w-5" />,
-  air_emission: <Wind className="h-5 w-5" />,
-  others: <HelpCircle className="h-5 w-5" />,
+  waste: <Trash2 className="h-5 w-5" />,
+};
+
+// Map UI categories to database enum values
+const categoryToDbEnum: Record<IssueCategory, string> = {
+  air: 'air_emission',
+  water: 'water',
+  waste: 'others',
 };
 
 const urgencyOptions = [
@@ -110,7 +101,7 @@ const ReportIssue = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [category, setCategory] = useState<IssueCategory | ''>('');
-  const [otherDescription, setOtherDescription] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
@@ -223,8 +214,8 @@ const ReportIssue = () => {
       return;
     }
 
-    if (category === 'others' && !otherDescription.trim()) {
-      toast.error('Please describe the issue');
+    if (!selectedSubcategory) {
+      toast.error('Please select a subcategory');
       return;
     }
 
@@ -286,18 +277,16 @@ const ReportIssue = () => {
         .getPublicUrl(fileName);
 
       const fullLocation = `${buildingName}, Floor ${floorNumber}, ${roomArea}`;
-      const description = category === 'others' 
-        ? `${otherDescription}. Location: ${fullLocation}. Urgency: ${selectedUrgency}`
-        : `Location: ${fullLocation}. Urgency: ${selectedUrgency}`;
+      const description = `Category: ${categoryLabels[category]} - ${selectedSubcategory}. Location: ${fullLocation}. Urgency: ${selectedUrgency}`;
 
-      // Map old category to new if needed
-      const categoryToSave = category === 'water' ? 'water' : category;
+      // Map UI category to database enum value
+      const dbCategory = categoryToDbEnum[category] as any;
 
       // Insert issue
       const { error: issueError } = await supabase.from('issues').insert({
         student_id: user.id,
         image_url: urlData.publicUrl,
-        category: categoryToSave,
+        category: dbCategory,
         severity: selectedUrgency === 'emergency' ? 'high' : selectedUrgency === 'needs_attention' ? 'medium' : 'low',
         confidence: 100,
         location: fullLocation,
@@ -341,7 +330,7 @@ const ReportIssue = () => {
     setImageFile(null);
     setImagePreview(null);
     setCategory('');
-    setOtherDescription('');
+    setSelectedSubcategory('');
     setBuildingName('');
     setFloorNumber('');
     setRoomArea('');
@@ -470,12 +459,15 @@ const ReportIssue = () => {
               {/* Category Selection */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">Issue Category</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {(Object.keys(categoryLabels) as IssueCategory[]).map((cat) => (
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setCategory(cat)}
+                      onClick={() => {
+                        setCategory(cat);
+                        setSelectedSubcategory('');
+                      }}
                       className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 hover:border-primary hover:bg-primary/5 ${
                         category === cat
                           ? 'border-primary bg-primary/10 shadow-md'
@@ -493,23 +485,32 @@ const ReportIssue = () => {
                 </div>
               </div>
 
-              {/* Others Description */}
-              {category === 'others' && (
-                <div className="space-y-2 animate-fade-in">
-                  <Label className="text-base font-medium">Describe the Issue</Label>
-                  <Textarea
-                    placeholder="Please describe the issue in detail..."
-                    value={otherDescription}
-                    onChange={(e) => setOtherDescription(e.target.value)}
-                    rows={3}
-                    className="resize-none"
-                  />
+              {/* Subcategory Selection */}
+              {category && (
+                <div className="space-y-3 animate-fade-in">
+                  <Label className="text-base font-medium">Select Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {categorySubcategories[category].map((subcat) => (
+                      <button
+                        key={subcat}
+                        type="button"
+                        onClick={() => setSelectedSubcategory(subcat)}
+                        className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                          selectedSubcategory === subcat
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border hover:border-primary hover:bg-primary/5'
+                        }`}
+                      >
+                        {subcat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
               <Button
                 onClick={proceedToLocation}
-                disabled={!imageFile || !category || (category === 'others' && !otherDescription.trim())}
+                disabled={!imageFile || !category || !selectedSubcategory}
                 className="w-full h-12 text-lg font-semibold shadow-lg"
               >
                 Continue
@@ -708,7 +709,7 @@ const ReportIssue = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-muted/50 rounded-xl">
                     <p className="text-xs text-muted-foreground mb-1">Category</p>
-                    <p className="font-medium">{category && categoryLabels[category]}</p>
+                    <p className="font-medium">{category && categoryLabels[category]} - {selectedSubcategory}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-xl">
                     <p className="text-xs text-muted-foreground mb-1">Urgency</p>
@@ -721,12 +722,6 @@ const ReportIssue = () => {
                       <p className="font-medium">{`${buildingName}, Floor ${floorNumber}, ${roomArea}`}</p>
                     </div>
                   </div>
-                  {category === 'others' && otherDescription && (
-                    <div className="p-4 bg-muted/50 rounded-xl col-span-2">
-                      <p className="text-xs text-muted-foreground mb-1">Description</p>
-                      <p className="font-medium">{otherDescription}</p>
-                    </div>
-                  )}
                 </div>
               </div>
 

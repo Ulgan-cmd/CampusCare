@@ -52,26 +52,29 @@ const handler = async (req: Request): Promise<Response> => {
         messages: [
           {
             role: "system",
-            content: `You are an image validator for a university campus issue reporting system. Your job is to determine if an uploaded image shows a legitimate campus/building infrastructure issue.
+            content: `You are an image validator for an ENVIRONMENTAL issue reporting system at a university campus. Your job is to determine if an uploaded image shows a legitimate ENVIRONMENTAL issue.
 
-VALID images include:
-- Water leaks, pipe damage, flooding
-- Broken or damaged furniture (chairs, desks, benches)
-- Cleanliness issues (trash, stains, dirty areas)
-- Electrical problems (exposed wires, broken switches, damaged outlets)
-- Structural damage (cracks, holes, broken tiles, damaged walls)
-- Broken fixtures (doors, windows, lights, fans)
-- Any other maintenance-related issues in a building/campus setting
+VALID images MUST show one of these ENVIRONMENTAL issues only:
+- AIR ISSUES: Visible air pollution, smoke, dust clouds, emissions from vehicles/generators, haze, smog, visible odour sources (garbage heaps causing smell, stagnant water causing smell)
+- WATER ISSUES: Water leaks, pipe leakage, flooding, water stagnation, poor water quality (discolored water), drainage problems, blocked drains, overflowing drains, sewage issues
+- WASTE ISSUES: Garbage spillage, overflowing bins, littering, improper waste disposal, scattered trash
+- NOISE-RELATED: Equipment or machinery that could cause noise pollution (though noise itself cannot be shown in images)
 
 INVALID images include:
+- Furniture damage (broken chairs, desks, benches)
+- Electrical issues (exposed wires, broken switches)
+- Civil/structural damage (cracks, holes, broken tiles, damaged walls)
+- Fire safety issues
+- Broken fixtures (doors, windows, lights, fans)
 - Selfies or portraits
 - Food or beverages
 - Personal items (phones, bags, books)
 - Screenshots or memes
-- Animals (unless causing damage)
-- Outdoor landscapes unrelated to campus issues
-- Random objects not showing damage
+- Animals (unless related to environmental issue)
+- Random objects not showing environmental damage
 - Blurry or unclear images where no issue is visible
+
+REMEMBER: Only ENVIRONMENTAL issues (Air, Water, Waste, Noise-related) are valid. Reject all infrastructure, furniture, electrical, civil, or structural issues.
 
 Respond with a JSON object only:
 {
@@ -85,7 +88,7 @@ Respond with a JSON object only:
             content: [
               {
                 type: "text",
-                text: "Analyze this image and determine if it shows a valid campus/building infrastructure issue that should be reported to maintenance."
+                text: "Analyze this image and determine if it shows a valid ENVIRONMENTAL issue (air pollution, water problems, waste spillage, or noise-related sources) that should be reported. Remember: only environmental issues are valid - reject any furniture, electrical, civil, or structural damage."
               },
               {
                 type: "image_url",
