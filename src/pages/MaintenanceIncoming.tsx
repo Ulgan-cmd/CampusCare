@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { generateIssuePDF, getReportFileName } from '@/lib/generateIssuePDF';
 import { 
   Inbox, 
   Clock, 
@@ -16,7 +19,8 @@ import {
   User,
   MapPin,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  Download
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +55,7 @@ const categoryLabels: Record<IssueCategory, string> = {
 } as Record<string, string>;
 
 const MaintenanceIncoming = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +63,7 @@ const MaintenanceIncoming = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchIssues = async () => {
@@ -103,6 +109,102 @@ const MaintenanceIncoming = () => {
       case 'submitted': return 'status-badge-submitted';
       case 'in_progress': return 'status-badge-in-progress';
       case 'resolved': return 'status-badge-resolved';
+    }
+  };
+
+  // Download issue report as PDF
+  const handleDownloadReport = async (issue: Issue, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    if (!user) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    setDownloadingReportId(issue.id);
+
+    try {
+      // Fetch student profile
+      const { data: studentProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('name, email, registration_number, degree, department, phone_number')
+        .eq('id', issue.student_id)
+        .single();
+
+      if (profileError || !studentProfile) {
+        throw new Error('Failed to fetch student profile');
+      }
+
+      // Generate PDF
+      const pdfBlob = await generateIssuePDF(
+        {
+          name: studentProfile.name,
+          email: studentProfile.email,
+          registration_number: studentProfile.registration_number,
+          degree: studentProfile.degree,
+          department: studentProfile.department,
+          phone_number: studentProfile.phone_number,
+        },
+        {
+          id: issue.id,
+          category: issue.category,
+          description: issue.description,
+          severity: issue.severity,
+          created_at: issue.created_at,
+          location: issue.location,
+          status: issue.status,
+          updated_at: issue.created_at, // Use created_at if updated_at not available
+          image_url: issue.image_url,
+          resolved_image_url: null, // Not available in list view
+        }
+      );
+
+      const fileName = getReportFileName(issue.id);
+      const filePath = `${user.id}/${issue.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('issue-reports')
+        .upload(filePath, pdfBlob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('issue-reports')
+        .getPublicUrl(filePath);
+
+      // Save to downloaded_reports table
+      const { error: dbError } = await supabase
+        .from('downloaded_reports')
+        .insert({
+          user_id: user.id,
+          issue_id: issue.id,
+          issue_category: issue.category,
+          location: issue.location,
+          issue_status: issue.status,
+          file_url: urlData.publicUrl,
+          file_name: fileName,
+        });
+
+      if (dbError) throw dbError;
+
+      // Download the file
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Report downloaded and saved to My Works!');
+    } catch (err) {
+      console.error('Error generating report:', err);
+      toast.error('Failed to generate report');
+    } finally {
+      setDownloadingReportId(null);
     }
   };
 
@@ -296,6 +398,29 @@ const MaintenanceIncoming = () => {
                               <Calendar className="h-4 w-4" />
                               {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
                             </span>
+                          </div>
+
+                          {/* Download Report Button */}
+                          <div className="mt-3">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={(e) => handleDownloadReport(issue, e)}
+                              disabled={downloadingReportId === issue.id}
+                            >
+                              {downloadingReportId === issue.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-4 w-4" />
+                                  Download Report
+                                </>
+                              )}
+                            </Button>
                           </div>
                         </div>
 
