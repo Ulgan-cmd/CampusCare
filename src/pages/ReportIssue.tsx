@@ -50,9 +50,9 @@ interface ValidationResult {
 
 // Subcategories for each main category
 const categorySubcategories: Record<IssueCategory, string[]> = {
-  air: ['Emission', 'Odour'],
-  water: ['Leak', 'Stagnation', 'Quality', 'Drainage'],
-  waste: ['Spillage'],
+  air: ['Emission', 'Odour', 'Others'],
+  water: ['Leak', 'Stagnation', 'Quality', 'Drainage', 'Others'],
+  waste: ['Spillage', 'Others'],
 };
 
 const categoryLabels: Record<IssueCategory, string> = {
@@ -102,6 +102,7 @@ const ReportIssue = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [category, setCategory] = useState<IssueCategory | ''>('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
@@ -219,6 +220,12 @@ const ReportIssue = () => {
       return;
     }
 
+    // Require custom description when "Others" is selected
+    if (selectedSubcategory === 'Others' && !customDescription.trim()) {
+      toast.error('Please describe the issue');
+      return;
+    }
+
     const isValid = await validateImage();
     if (!isValid) return;
 
@@ -277,7 +284,10 @@ const ReportIssue = () => {
         .getPublicUrl(fileName);
 
       const fullLocation = `${buildingName}, Floor ${floorNumber}, ${roomArea}`;
-      const description = `Category: ${categoryLabels[category]} - ${selectedSubcategory}. Location: ${fullLocation}. Urgency: ${selectedUrgency}`;
+      const subcategoryText = selectedSubcategory === 'Others' && customDescription.trim() 
+        ? `Others: ${customDescription.trim()}` 
+        : selectedSubcategory;
+      const description = `Category: ${categoryLabels[category]} - ${subcategoryText}. Location: ${fullLocation}. Urgency: ${selectedUrgency}`;
 
       // Map UI category to database enum value
       const dbCategory = categoryToDbEnum[category] as any;
@@ -331,6 +341,7 @@ const ReportIssue = () => {
     setImagePreview(null);
     setCategory('');
     setSelectedSubcategory('');
+    setCustomDescription('');
     setBuildingName('');
     setFloorNumber('');
     setRoomArea('');
@@ -494,7 +505,12 @@ const ReportIssue = () => {
                       <button
                         key={subcat}
                         type="button"
-                        onClick={() => setSelectedSubcategory(subcat)}
+                        onClick={() => {
+                          setSelectedSubcategory(subcat);
+                          if (subcat !== 'Others') {
+                            setCustomDescription('');
+                          }
+                        }}
                         className={`px-4 py-2 rounded-lg border-2 transition-all ${
                           selectedSubcategory === subcat
                             ? 'border-primary bg-primary text-primary-foreground'
@@ -505,12 +521,27 @@ const ReportIssue = () => {
                       </button>
                     ))}
                   </div>
+                  
+                  {/* Custom description textarea when Others is selected */}
+                  {selectedSubcategory === 'Others' && (
+                    <div className="space-y-2 mt-4 animate-fade-in">
+                      <Label className="text-sm font-medium text-muted-foreground">
+                        Describe the issue
+                      </Label>
+                      <Textarea
+                        placeholder="Please describe the environmental issue in detail..."
+                        value={customDescription}
+                        onChange={(e) => setCustomDescription(e.target.value)}
+                        className="min-h-[100px] resize-none"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
               <Button
                 onClick={proceedToLocation}
-                disabled={!imageFile || !category || !selectedSubcategory}
+                disabled={!imageFile || !category || !selectedSubcategory || (selectedSubcategory === 'Others' && !customDescription.trim())}
                 className="w-full h-12 text-lg font-semibold shadow-lg"
               >
                 Continue
