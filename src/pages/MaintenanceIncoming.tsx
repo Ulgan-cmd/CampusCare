@@ -42,17 +42,14 @@ interface Issue {
   created_at: string;
 }
 
-const categoryLabels: Record<IssueCategory, string> = {
+const categoryLabels: Record<string, string> = {
   water_leak: 'Water',
   water: 'Water',
-  cleanliness: 'Cleanliness',
-  furniture_damage: 'Furniture Damage',
-  electrical_issue: 'Electrical Issue',
-  fire_safety: 'Fire Safety',
-  civil_work: 'Civil Work',
-  air_emission: 'Air Emission',
-  others: 'Others',
-} as Record<string, string>;
+  air_emission: 'Air',
+  air: 'Air',
+  waste: 'Waste',
+  others: 'Waste',
+};
 
 const MaintenanceIncoming = () => {
   const { user } = useAuth();
@@ -293,11 +290,9 @@ const MaintenanceIncoming = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="water_leak">Water Leak</SelectItem>
-                  <SelectItem value="cleanliness">Cleanliness</SelectItem>
-                  <SelectItem value="furniture_damage">Furniture Damage</SelectItem>
-                  <SelectItem value="electrical_issue">Electrical Issue</SelectItem>
-                  <SelectItem value="others">Others</SelectItem>
+                  <SelectItem value="air_emission">Air</SelectItem>
+                  <SelectItem value="water">Water</SelectItem>
+                  <SelectItem value="others">Waste</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={severityFilter} onValueChange={setSeverityFilter}>
