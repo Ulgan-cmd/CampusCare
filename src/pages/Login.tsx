@@ -11,14 +11,20 @@ import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import srmLogo from '@/assets/srm-logo.jpeg';
 
+const ALLOWED_EMAIL_DOMAIN = '@srmist.edu.in';
+
+const validateEmailDomain = (email: string): boolean => {
+  return email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN);
+};
+
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [emailError, setEmailError] = useState('');
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
-
   const checkProfileAndRedirect = async (userId: string, userEmail: string) => {
     // Check if profile is complete
     const { data: profile } = await supabase
@@ -39,6 +45,14 @@ const Login = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError('');
+
+    if (!validateEmailDomain(email)) {
+      setEmailError('Only @srmist.edu.in emails are allowed');
+      toast.error('Only @srmist.edu.in emails are allowed');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -65,6 +79,14 @@ const Login = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError('');
+
+    if (!validateEmailDomain(email)) {
+      setEmailError('Only @srmist.edu.in emails are allowed');
+      toast.error('Only @srmist.edu.in emails are allowed');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -117,13 +139,17 @@ const Login = () => {
                       <Input
                         id="signin-email"
                         type="email"
-                        placeholder="your.email@example.com"
+                        placeholder="yourname@srmist.edu.in"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10"
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setEmailError('');
+                        }}
+                        className={`pl-10 ${emailError ? 'border-destructive' : ''}`}
                         required
                       />
                     </div>
+                    {emailError && <p className="text-xs text-destructive">{emailError}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
@@ -181,13 +207,17 @@ const Login = () => {
                       <Input
                         id="signup-email"
                         type="email"
-                        placeholder="your.email@example.com"
+                        placeholder="yourname@srmist.edu.in"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10"
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setEmailError('');
+                        }}
+                        className={`pl-10 ${emailError ? 'border-destructive' : ''}`}
                         required
                       />
                     </div>
+                    {emailError && <p className="text-xs text-destructive">{emailError}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
